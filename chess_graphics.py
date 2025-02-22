@@ -1,8 +1,4 @@
-from idlelib.pyparse import trans
-from tkinter import Canvas
-
 import ttkbootstrap as ttk
-import tkinter as tk
 from PIL import Image, ImageTk
 import chess
 
