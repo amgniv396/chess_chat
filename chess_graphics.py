@@ -1,180 +1,135 @@
+from idlelib.pyparse import trans
+from tkinter import Canvas
+
+import ttkbootstrap as ttk
+import tkinter as tk
+from PIL import Image, ImageTk
 import chess
-import pygame
-from pygame.time import delay
 
-import chess_bot
+# Board and Piece Dimensions
+BOARD_SIZE = 800
+SQUARE_SIZE = BOARD_SIZE // 8
 
-BOARD_HEIGHT = 600
-BOARD_WIDTH = 600
-timer = pygame.time.Clock()
-fps = 30
+PIECE_SIZE_TO_SQUARE = 15
 
 piece_images = {}
+COLORS = {'odd': '#83CB72', 'even': '#DCE2D6'}
+
+CIRCLE_CONST = 35
 
 
 def load_images():
-    timer.tick(fps)
-    white_rook = pygame.image.load('assets\\pieces\\white rook.png')
-    white_rook = pygame.transform.scale(white_rook, (60, 60))
-    piece_images['r'] = white_rook
-    white_knight = pygame.image.load('assets\\pieces\\white knight.png')
-    white_knight = pygame.transform.scale(white_knight, (60, 60))
-    piece_images['n'] = white_knight
-    white_bishop = pygame.image.load('assets\\pieces\\white bishop.png')
-    white_bishop = pygame.transform.scale(white_bishop, (60, 60))
-    piece_images['b'] = white_bishop
-    white_king = pygame.image.load('assets\\pieces\\white king.png')
-    white_king = pygame.transform.scale(white_king, (60, 60))
-    piece_images['k'] = white_king
-    white_queen = pygame.image.load('assets\\pieces\\white queen.png')
-    white_queen = pygame.transform.scale(white_queen, (60, 60))
-    piece_images['q'] = white_queen
-    white_pawn = pygame.image.load('assets\\pieces\\white pawn.png')
-    white_pawn = pygame.transform.scale(white_pawn, (60, 60))
-    piece_images['p'] = white_pawn
+    piece_names = {
+        'r': "white rook",
+        'n': "white knight",
+        'b': "white bishop",
+        'q': "white queen",
+        'k': "white king",
+        'p': "white pawn",
+        'R': "black rook",
+        'N': "black knight",
+        'B': "black bishop",
+        'Q': "black queen",
+        'K': "black king",
+        'P': "black pawn",
+    }
 
-    black_rook = pygame.image.load('assets\\pieces\\black rook.png')
-    black_rook = pygame.transform.scale(black_rook, (60, 60))
-    piece_images['R'] = black_rook
-    black_knight = pygame.image.load('assets\\pieces\\black knight.png')
-    black_knight = pygame.transform.scale(black_knight, (60, 60))
-    piece_images['N'] = black_knight
-    black_bishop = pygame.image.load('assets\\pieces\\black bishop.png')
-    black_bishop = pygame.transform.scale(black_bishop, (60, 60))
-    piece_images['B'] = black_bishop
-    black_king = pygame.image.load('assets\\pieces\\black king.png')
-    black_king = pygame.transform.scale(black_king, (60, 60))
-    piece_images['K'] = black_king
-    black_queen = pygame.image.load('assets\\pieces\\black queen.png')
-    black_queen = pygame.transform.scale(black_queen, (60, 60))
-    piece_images['Q'] = black_queen
-    black_pawn = pygame.image.load('assets\\pieces\\black pawn.png')
-    black_pawn = pygame.transform.scale(black_pawn, (60, 60))
-    piece_images['P'] = black_pawn
+    for key, name in piece_names.items():
+        img = Image.open(f"assets/pieces/{name}.png")
+        img = img.resize((SQUARE_SIZE - PIECE_SIZE_TO_SQUARE, SQUARE_SIZE - PIECE_SIZE_TO_SQUARE))
+        piece_images[key] = ImageTk.PhotoImage(img)
 
 
-def position2pixel(position):
-    row, col = position
-    return row * (BOARD_WIDTH // 8) + 5, col * (BOARD_HEIGHT // 8) + 5
+def draw_board(canvas):
+    for row in range(8):
+        for col in range(8):
+            color = COLORS['odd'] if (row + col) % 2 == 0 else COLORS['even']
+            canvas.create_rectangle(col * SQUARE_SIZE, row * SQUARE_SIZE, (col + 1) * SQUARE_SIZE,
+                                    (row + 1) * SQUARE_SIZE, fill=color, outline="")
 
 
-def pixel2position(pixel):
-    x, y = pixel
-    return x * 8 // BOARD_WIDTH, y * 8 // BOARD_HEIGHT
-
-
-def position2square_name(position):
-    row, col = position
-    square_value = row + col * 8
-    return chr(square_value % 8 + ord('a')) + str(8 - square_value // 8)
-
-
-def square_name2position(square_name):
-    return ord(square_name[0]) - 97, 8 - int(square_name[1])
-
-
-def draw_board(screen):
-    for col in range(8):
-        for row in range(8):
-            if col % 2 ^ row % 2:
-                color = (131, 203, 114)
-            else:
-                color = (220, 226, 214)
-            pygame.draw.rect(screen, color,
-                             [col * (BOARD_WIDTH // 8), row * (BOARD_HEIGHT // 8), BOARD_WIDTH // 8, BOARD_HEIGHT // 8])
-
-
-def from_fen_draw_pieces(screen, fen):
-    fen = fen.split()[0].replace('/', '')
+def draw_pieces(canvas, fen: str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"):
+    board_fen = fen.split()[0].replace('/', '')
     i = 0
-    for piece_fen_representation in fen:
+    for piece_fen_representation in board_fen:
         if piece_fen_representation.isdigit():
             i += int(piece_fen_representation)
         else:
-            screen.blit(piece_images[piece_fen_representation], position2pixel((i % 8, i // 8)))
+            canvas.create_image((i % 8) * SQUARE_SIZE + PIECE_SIZE_TO_SQUARE / 2,
+                                (i // 8) * SQUARE_SIZE + PIECE_SIZE_TO_SQUARE / 2, anchor="nw",
+                                image=piece_images[piece_fen_representation])
             i += 1
 
 
-def draw_on_square(screen, position):
-    col, row = position
-    pygame.draw.rect(screen, (105, 105, 105),
-                     [col * (BOARD_WIDTH // 8), row * (BOARD_HEIGHT // 8), BOARD_WIDTH // 8, BOARD_HEIGHT // 8], 3)
-    # screen.blit(screen, (0, 0))
+def on_square_click(event, canvas, board, game_state):
+    row = event.y // SQUARE_SIZE
+    col = event.x // SQUARE_SIZE
+    square = chess.square(col, 7 - row)
+    piece = board.piece_at(square)
 
+    if game_state["selected"]:
+        move = chess.Move(game_state["selected"], square)
+        if move in board.legal_moves:
+            board.push(move)
+            game_state["selected"] = None
+            game_state["current_player"] = not game_state["current_player"]
+        else:
+            game_state["selected"] = square
+    elif piece and piece.color == game_state["current_player"]:
+        game_state["selected"] = square
+
+    update_board(canvas, board, game_state)
+
+
+# Update the board and pieces
+def update_board(canvas, board, game_state):
+    canvas.delete("all")
+    draw_board(canvas)
+    draw_pieces(canvas, board.fen())
+
+    # Highlight selected square
+    if game_state["selected"]:
+        row = 7 - chess.square_rank(game_state["selected"])
+        col = chess.square_file(game_state["selected"])
+        x1 = col * SQUARE_SIZE
+        y1 = row * SQUARE_SIZE
+        x2 = x1 + SQUARE_SIZE
+        y2 = y1 + SQUARE_SIZE
+        canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=3)
+
+        for move in board.legal_moves:
+            if move.from_square == game_state["selected"]:
+                row = 7 - move.to_square // 8
+                col = move.to_square % 8
+                x1 = col * SQUARE_SIZE
+                y1 = row * SQUARE_SIZE
+                x2 = x1 + SQUARE_SIZE
+                y2 = y1 + SQUARE_SIZE
+                canvas.create_oval(x1 + CIRCLE_CONST, y1 + CIRCLE_CONST, x2 - CIRCLE_CONST, y2 - CIRCLE_CONST,
+                                   fill="gray")
+
+
+# Main function
 def main():
-    pygame.init()
-    screen = pygame.display.set_mode((BOARD_WIDTH, BOARD_HEIGHT))
+    app = ttk.Window(themename="darkly")
+    app.title("chess-chat game")
+    app.geometry(f"{BOARD_SIZE}x{BOARD_SIZE}")
 
     load_images()
 
-    UCI_move = ''
-
     board = chess.Board()
+    game_state = {"selected": None, "current_player": chess.WHITE}
 
-    draw_board(screen)
-    from_fen_draw_pieces(screen, board.fen())
-    selection = 0
-    position = None
-    is_running = True
-    current_player = chess.WHITE
+    canvas = ttk.tk.Canvas(app, width=BOARD_SIZE, height=BOARD_SIZE)
+    canvas.pack()
 
-    while is_running:
-        timer.tick(fps)
+    draw_board(canvas)
+    draw_pieces(canvas)
 
-        draw_board(screen)
-        from_fen_draw_pieces(screen, board.fen())
+    canvas.bind("<Button-1>", lambda event: on_square_click(event, canvas, board, game_state))
 
-        if selection == 1:
-            draw_on_square(screen, position)
-
-            for move in board.legal_moves:
-                if move.from_square == chess.parse_square(position2square_name(position)):
-                    x, y = position2pixel(square_name2position(chess.square_name(move.to_square)))
-                    pygame.draw.circle(screen, (105, 105, 105), (x + (600 // 16) - 5, y + (600 // 16) - 5), 5)
-
-        screen.blit(screen, (0, 0))
-        pygame.display.flip()
+    app.mainloop()
 
 
-
-        if current_player == chess.BLACK:
-            board.push(chess_bot.minimax(board, 4, chess.WHITE, chess.WHITE)[0])
-            current_player = not current_player
-
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                is_running = False
-
-            elif current_player == chess.WHITE and event.type == pygame.MOUSEBUTTONDOWN and event.button == pygame.BUTTON_LEFT: #
-                position = pixel2position(pygame.mouse.get_pos())
-                piece = board.piece_at(chess.parse_square(position2square_name(position)))
-                if piece is not None and piece.color == current_player:
-                    selection = 1
-                    UCI_move = position2square_name(position)
-                else:
-                    selection = 0
-
-                wanted_move = position2square_name(position)
-                if UCI_move != '' and UCI_move != wanted_move:
-
-                    UCI_move += wanted_move
-                    move = chess.Move.from_uci(UCI_move)
-                    if board.is_legal(move):
-                        board.push(move)
-                        current_player = not current_player
-                    UCI_move = ''
-
-        if board.is_checkmate() or board.is_stalemate() or board.is_repetition(3):
-            print('game ended')
-            is_running = False
-
-    draw_board(screen)
-    from_fen_draw_pieces(screen, board.fen())
-    pygame.display.flip()
-    delay(500)
-    pygame.quit()
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
