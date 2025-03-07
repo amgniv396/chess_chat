@@ -92,6 +92,7 @@ class HexagonButton(ttk.Frame):
             img = Image.open(image_path).resize((size, size))
             mask = Image.new("L", (size, size), 0)
             draw = ImageDraw.Draw(mask)
+            #TODO a fill will be cool
             draw.polygon(hexagon, fill=255)
 
             # Apply mask to image
@@ -124,7 +125,6 @@ def create_chess_app():
     window.title("Chess App")
     window.attributes('-fullscreen', True)
 
-    style = ttk.Style()
     main_frame = ttk.Frame(window)
     main_frame.pack(fill=BOTH, expand=True)
 
@@ -139,7 +139,6 @@ def create_chess_app():
     honeycomb_frame = ttk.Frame(main_frame)
     honeycomb_frame.place(relx=0.2, rely=0.5, anchor=CENTER)
 
-    # Only use black pieces - exactly 6 as requested
     pieces = [
         ("black king", piece_king),
         ("black queen", piece_queen),
@@ -187,18 +186,14 @@ def create_chess_app():
         pos_frame = ttk.Frame(honeycomb_frame)
         pos_frame.place(x=x, y=y)
 
-        # All hexagons are filled
-        is_filled = True
-        image_path = f"assets/pieces/{pieces[i][0]}.png"
-        command = pieces[i][1]
 
         # Create the hexagon button
         hex_button = HexagonButton(
             pos_frame,
-            image_path=image_path,
-            command=command,
+            image_path=f"assets/pieces/{pieces[i][0]}.png",
+            command=pieces[i][1],
             size=hex_size,
-            filled=is_filled
+            filled=True
         )
         hex_button.pack()
         hex_buttons.append(hex_button)
