@@ -1,246 +1,210 @@
-import ttkbootstrap as ttk
-from ttkbootstrap.constants import *
-from PIL import Image, ImageTk, ImageOps, ImageDraw
+import tkinter as tk
+import ttkbootstrap as tb
+from PIL import Image, ImageTk
 import math
 
-
-def piece_king():
-    pass
-
-
-def piece_queen():
-    pass
+from PIL.ImageWin import Window
+from pygame.examples.cursors import image
 
 
-def piece_rook():
-    pass
+def exit_game():
+    window.quit()
 
 
-def piece_bishop():
-    pass
-
-
-def piece_knight():
-    pass
-
-
-def piece_pawn():
-    pass
-
-
-def start_game():
-    print("Game starting...")
-
-
-def open_settings():
-    print("Opening settings...")
-
-
-class HexagonButton(ttk.Frame):
-    def __init__(self, parent, image_path=None, command=None, size=80, filled=False, **kwargs):
-        super().__init__(parent, **kwargs)
-
-        self.size = size
-        self.filled = filled
-
-        # Canvas to draw the hexagon
-        self.canvas = ttk.Canvas(self, width=size, height=size, highlightthickness=0)
-        self.canvas.pack()
-
-        # Draw hexagon with background
-        self.draw_hexagon(image_path)
-
-        # Add click event
-        self.canvas.bind("<Button-1>", lambda e: command() if command else None)
-
-        # Add hover effect
-        self.canvas.bind("<Enter>", self.on_enter)
-        self.canvas.bind("<Leave>", self.on_leave)
-
-    def draw_hexagon(self, image_path=None):
-        """Draw a hexagon with background and optional image"""
-        size = self.size
-
-        # Calculate hexagon coordinates - pointy-top orientation
-        w, h = size, size
-        radius = min(w, h) / 2
-        center_x, center_y = w / 2, h / 2
-
-        # Calculate the six points of the hexagon
-        hexagon = []
-        for i in range(6):
-            angle_deg = 60 * i - 30
-            angle_rad = math.pi / 180 * angle_deg
-            x = center_x + radius * math.cos(angle_rad)
-            y = center_y + radius * math.sin(angle_rad)
-            hexagon.append((x, y))
-
-        # Choose background color based on filled status
-        bg_color = 'red' if self.filled else "#DDDDDD"
-
-        # Draw hexagon background
-        self.hex_id = self.canvas.create_polygon(
-            hexagon,
-            fill=bg_color,
-            outline="#222222",
-            width=2
-        )
-
-        # Add image if provided
-        if image_path:
-            # Create hexagonal mask for the image
-            img = Image.open(image_path).resize((size, size))
-            mask = Image.new("L", (size, size), 0)
-            draw = ImageDraw.Draw(mask)
-            #TODO a fill will be cool
-            draw.polygon(hexagon, fill=255)
-
-            # Apply mask to image
-            result = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-            result.paste(img, (0, 0), mask)
-
-            # Store as instance variable to prevent garbage collection
-            self.hex_image = ImageTk.PhotoImage(result)
-
-            # Draw the image on top of background
-            self.image_id = self.canvas.create_image(size / 2, size / 2, image=self.hex_image)
-
-    def on_enter(self, event):
-        """Hover effect - highlight"""
-        if self.filled:
-            self.canvas.itemconfig(self.hex_id, fill="#444444")
-        else:
-            self.canvas.itemconfig(self.hex_id, fill="#EEEEEE")
-
-    def on_leave(self, event):
-        """Remove highlight"""
-        if self.filled:
-            self.canvas.itemconfig(self.hex_id, fill='red')
-        else:
-            self.canvas.itemconfig(self.hex_id, fill="#DDDDDD")
-
-
-def create_chess_app():
-    window = ttk.Window(themename="darkly")
-    window.title("Chess App")
-    window.attributes('-fullscreen', True)
-
-    main_frame = ttk.Frame(window)
-    main_frame.pack(fill=BOTH, expand=True)
-
-    bg_image = Image.open("assets/utils/chessBackground.jpg")
-    bg_image = bg_image.resize((window.winfo_screenwidth(), window.winfo_screenheight()))
-    bg_photo = ImageTk.PhotoImage(bg_image)
-
-    bg_label = ttk.Label(main_frame, image=bg_photo)
-    bg_label.place(relwidth=1, relheight=1)
-
-    # Create honeycomb layout for pieces on the left side
-    honeycomb_frame = ttk.Frame(main_frame)
-    honeycomb_frame.place(relx=0.2, rely=0.5, anchor=CENTER)
-
-    pieces = [
-        ("black king", piece_king),
-        ("black queen", piece_queen),
-        ("black rook", piece_rook),
-        ("black bishop", piece_bishop),
-        ("black knight", piece_knight),
-        ("black pawn", piece_pawn)
+def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
+    """Draw a rounded rectangle on the canvas"""
+    points = [
+        x1 + radius, y1,  # Top side
+        x2 - radius, y1,
+        x2, y1,  # Top right corner
+        x2, y1 + radius,
+        x2, y2 - radius,  # Right side
+        x2, y2,
+        x2 - radius, y2,  # Bottom right corner
+        x1 + radius, y2,  # Bottom side
+        x1, y2,  # Bottom left corner
+        x1, y2 - radius,
+        x1, y1 + radius,  # Left side
+        x1, y1
     ]
 
-    # Hexagon dimensions
-    hex_size = 150  # Increased size for better visibility
+    rect_id = canvas.create_polygon(points, **kwargs, smooth=True)
+    return rect_id
 
-    # For perfect tangency:
-    # Horizontal distance between centers of adjacent hexagons in same row
-    hex_horizontal_distance = hex_size * 0.866  # sqrt(3)/2 * width
 
-    # Vertical distance between centers of adjacent rows
-    hex_vertical_distance = hex_size * 0.75
+def create_hexagon_image_button(canvas, x, y, size, image_path, command, color="#3498db"):
+    # Calculate the points for a hexagon
+    points = []
+    for i in range(6):
+        angle_deg = 60 * i - 30
+        angle_rad = math.pi / 180 * angle_deg
+        points.append(x + size * math.cos(angle_rad))
+        points.append(y + size * math.sin(angle_rad))
 
-    # Define positions in (col, row) format
-    # These coordinates are scaled by hex_horizontal_distance and hex_vertical_distance
-    hex_coords = [
-        (1, 0),  # Top center
-        (0, 1),  # Middle left
-        (1, 2),  # Middle right
-        (2, 2),  # Middle center
-        (0, 3),  # Bottom left
-        (2, 0)  # Bottom right
+    # Create hexagon shape
+    hexagon = canvas.create_polygon(points, outline="black", fill=color, width=2)
+
+    # Load and resize the image to fit inside the hexagon
+    image_size = int(size * 1.2)  # Make image slightly smaller than the hexagon
+    pil_image = Image.open(image_path).resize((image_size, image_size))
+    tk_image = ImageTk.PhotoImage(pil_image)
+
+    # Store the image reference to prevent garbage collection
+    if not hasattr(canvas, 'images'):
+        canvas.images = []
+    canvas.images.append(tk_image)
+
+    # Add image to the center of the hexagon
+    image_id = canvas.create_image(x, y, image=tk_image)
+
+    # Event handlers for hover effect
+    lighter_color = "#333333"  # Lighter version of the default color
+
+    def on_enter(event):
+        canvas.itemconfig(hexagon, fill=lighter_color)
+
+    def on_leave(event):
+        canvas.itemconfig(hexagon, fill=color)
+
+    # Bind events
+    canvas.tag_bind(hexagon, "<Enter>", on_enter)
+    canvas.tag_bind(hexagon, "<Leave>", on_leave)
+    canvas.tag_bind(image_id, "<Enter>", on_enter)
+    canvas.tag_bind(image_id, "<Leave>", on_leave)
+
+    # Bind click event
+    def on_click(event):
+        command(image_path.split('/')[-1].split('.')[0])  # Pass piece name to command
+
+    canvas.tag_bind(hexagon, "<Button-1>", on_click)
+    canvas.tag_bind(image_id, "<Button-1>", on_click)
+
+    return hexagon, image_id, {"x": x, "y": y}  # Return position for reference
+
+
+def create_hexagon_grid(canvas, center_x, center_y, hex_size):
+    # Dictionary to store all hex positions and references
+    hexagons = {}
+
+    # Calculate positioning constants
+    horizontal_distance = hex_size * math.sqrt(3)  # Distance between centers horizontally
+    vertical_distance = hex_size  # Distance between centers vertically
+
+    # Piece configuration - piece name and relative position from center
+    pieces_config = [
+        {"piece": "black knight", "position": (1, 0), "color": "#222222"},  # Center
+        {"piece": "black king", "position": (0.5, 1.5), "color": "#222222"},  # Right
+        {"piece": "black queen", "position": (1, 3), "color": "#222222"},  # Top-right
+        {"piece": "black bishop", "position": (0.5, -1.5), "color": "#222222"},  # Top-left
+        {"piece": "black rook", "position": (0, 3), "color": "#222222"},  # Left
+        {"piece": "black pawn", "position": (2, 0), "color": "#222222"}  # Bottom
     ]
 
-    # Store references to the hexagon buttons
-    hex_buttons = []
+    def handle_piece_click(piece_name):
+        print(f"{piece_name} was clicked!")
+        # You could implement piece selection logic here
 
-    # Create exactly 6 hexagons in a tangent pattern
-    for i, (col, row) in enumerate(hex_coords):
-        # Calculate position for tangent hexagons
-        x = col * hex_horizontal_distance
-        y = row * hex_vertical_distance
+    # Create each hexagon at its relative position
+    for config in pieces_config:
+        # Calculate absolute position based on relative position
+        rel_x, rel_y = config["position"]
+        abs_x = center_x + rel_x * horizontal_distance
+        abs_y = center_y + rel_y * vertical_distance
 
-        # Offset odd rows for tangent hexagons
-        if row % 2 == 1:
-            x += hex_horizontal_distance / 2
-
-        # Create frame for precise positioning
-        pos_frame = ttk.Frame(honeycomb_frame)
-        pos_frame.place(x=x, y=y)
-
-
-        # Create the hexagon button
-        hex_button = HexagonButton(
-            pos_frame,
-            image_path=f"assets/pieces/{pieces[i][0]}.png",
-            command=pieces[i][1],
-            size=hex_size,
-            filled=True
+        # Create the hexagon with the specified piece
+        image_path = f"assets/pieces/{config['piece']}.png"
+        hex_obj, img_id, pos = create_hexagon_image_button(
+            canvas,
+            abs_x,
+            abs_y,
+            hex_size,
+            image_path,
+            handle_piece_click,
+            config["color"]
         )
-        hex_button.pack()
-        hex_buttons.append(hex_button)
 
-    # Ensure the honeycomb frame is sized appropriately
-    honeycomb_frame.update()
-    honeycomb_width = 4 * hex_horizontal_distance
-    honeycomb_height = 4 * hex_vertical_distance
-    honeycomb_frame.config(width=honeycomb_width, height=honeycomb_height)
+        # Store the hexagon reference
+        hexagons[config["piece"]] = {
+            "hex_id": hex_obj,
+            "img_id": img_id,
+            "position": pos
+        }
 
-    # Main content in center of screen
-    content_frame = ttk.Frame(main_frame)
-    content_frame.place(relx=0.5, rely=0.5, anchor=CENTER)
-
-    logo = Image.open("assets/utils/chessLogo.png").resize((200, 200))
-    logo_with_border = ImageOps.expand(logo, border=10, fill=(12, 12, 12))
-    logo_img = ImageTk.PhotoImage(logo_with_border)
-
-    logo_label = ttk.Label(content_frame, image=logo_img)
-    logo_label.pack(pady=20)
-
-    title_label = ttk.Label(content_frame, text="CHESS MASTER", font=("Helvetica", 32, "bold"), style='primary')
-    title_label.pack()
-
-    subtitle_label = ttk.Label(content_frame, text="Challenge your mind, master the game", font=("Helvetica", 14),
-                               style='secondary')
-    subtitle_label.pack(pady=5)
-
-    button_frame = ttk.Frame(content_frame)
-    button_frame.pack(pady=30)
-
-    play_button = ttk.Button(button_frame, text="Start New Game", command=start_game, style='primary.Outline.TButton',
-                             width=15, padding=20)
-    play_button.pack(pady=15)
-
-    quit_button = ttk.Button(button_frame, text="Exit Game", command=window.quit, style='danger.Outline.TButton',
-                             width=15, padding=20)
-    quit_button.pack(pady=15)
-
-    # Store references to prevent garbage collection
-    window.logo_img = logo_img
-    window.bg_photo = bg_photo
-    window.hex_buttons = hex_buttons
-
-    return window
+    return hexagons
 
 
-if __name__ == "__main__":
-    app = create_chess_app()
-    app.mainloop()
+# Initialize main window
+window = tk.Tk()
+window.title("Chess App")
+window.attributes('-fullscreen', True)
+
+# Configure style
+tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
+
+# Create background frame and canvas
+bg_frame = tk.Frame(window)
+bg_frame.pack(fill="both", expand=True)
+
+canvas = tk.Canvas(bg_frame, width=500, height=500)
+canvas.pack(fill="both", expand=True)
+
+# Load images
+bg_image = ImageTk.PhotoImage(
+    Image.open("assets/utils/chessBackground.jpg").resize((window.winfo_screenwidth(), window.winfo_screenheight())))
+logo_image = ImageTk.PhotoImage(Image.open("assets/utils/chessLogo.png").resize((200, 200)))
+
+# Place background image
+canvas.create_image(0, 0, image=bg_image, anchor=tk.NW)
+
+# Calculate positions for a single rounded rectangle containing both logo and buttons
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+center_x = screen_width / 2
+center_y = screen_height * 0.46  # Centered between logo and buttons
+
+# Size of the rectangle to contain both logo and buttons
+rect_width = 320
+rect_height = 525
+
+# Draw a single rounded rectangle behind both logo and buttons
+main_rect = create_rounded_rectangle(
+    canvas,
+    center_x - rect_width / 2,
+    center_y - rect_height / 2,
+    center_x + rect_width / 2,
+    center_y + rect_height / 2,
+    radius=40,
+    fill="#111111",
+    outline="#333333",
+    width=2
+)
+
+# Place logo on top of the rounded rectangle
+logo_label = tk.Label(window, image=logo_image, bg="#111111")
+logo_label.place(relx=0.5, rely=0.3, anchor=tk.CENTER)
+
+title_label = tb.Label(window, text="Chess Master", font=("Arial", 30), background="#111111", foreground="#ffffff")
+title_label.place(relx=0.5, rely=0.47, anchor=tk.CENTER)  # Position it between the logo and buttons
+
+
+# Create buttons on top of the rounded rectangle
+start_button = tb.Button(window, text="Start Game", command=lambda: print("Game Starting..."), bootstyle="success",
+                         padding=15, width=15)
+start_button.place(relx=0.5, rely=0.6, anchor=tk.CENTER)
+
+exit_button = tb.Button(window, text="Exit Game", command=exit_game, bootstyle="danger", padding=15, width=15)
+exit_button.place(relx=0.5, rely=0.7, anchor=tk.CENTER)
+
+
+
+settings_image = ImageTk.PhotoImage(Image.open("assets/utils/settingsIcon.png").resize((50, 50)))
+settings_button = tb.Button(window, image=settings_image, command=lambda: print("Settings"), bootstyle="secondary")
+settings_button.place(relx=0.955)
+
+# Create the hexagonal grid with all chess pieces
+hex_x = window.winfo_screenwidth() * 0.15  # 15% position horizontally
+hex_y = window.winfo_screenheight() * 0.45  # Middle of the screen vertically
+hex_grid = create_hexagon_grid(canvas, hex_x, hex_y, 60)
+
+# Start the main loop
+window.mainloop()
