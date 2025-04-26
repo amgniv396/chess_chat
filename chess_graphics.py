@@ -1,6 +1,11 @@
+import tkinter
+
 import ttkbootstrap as ttk
 from PIL import Image, ImageTk
 import chess
+import tkinter as tk
+
+import homeScreen_graphics
 
 # Board and Piece Dimensions
 BOARD_SIZE = 800
@@ -69,6 +74,12 @@ def on_square_click(event, canvas, board, game_state):
             board.push(move)
             game_state["selected"] = None
             game_state["current_player"] = not game_state["current_player"]
+
+            '''# Check for game over
+            if board.is_game_over():
+                print("Game over!")
+                #homeScreen_graphics.return_to_homescreen()
+                return'''
         else:
             game_state["selected"] = square
     elif piece and piece.color == game_state["current_player"]:
@@ -126,6 +137,87 @@ def main():
 
     app.mainloop()
 
+def start_game(window):
+    # Hide home screen
+    for widget in window.winfo_children():
+        widget.pack_forget()
+        widget.place_forget()
 
-if __name__ == "__main__":
-    main()
+    # Create background frame and canvas
+    bg_frame = tk.Frame(window)
+    bg_frame.pack(fill="both", expand=True)
+
+    canvas = tk.Canvas(bg_frame, width=500, height=500)
+    canvas.pack(fill="both", expand=True)
+
+    # Load images
+    bg_image = ImageTk.PhotoImage(
+        Image.open("assets/utils/chessBackground.jpg").resize(
+            (window.winfo_screenwidth(), window.winfo_screenheight()))
+    )
+
+    # Place background image
+    canvas.bg_image = bg_image  # Save reference!
+    canvas.create_image(0, 0, image=bg_image, anchor=tk.NW)
+
+    # === Create Chess Canvas ===
+    chess_canvas = tk.Canvas(canvas, width=BOARD_SIZE, height=BOARD_SIZE, bd=5, relief="ridge")
+    chess_canvas.pack()
+
+    # Load images and draw board
+    load_images()
+    board = chess.Board()
+    game_state = {"selected": None, "current_player": chess.WHITE}
+
+    draw_board(chess_canvas)
+    draw_pieces(chess_canvas)
+
+    # Bind clicks
+    chess_canvas.bind("<Button-1>", lambda event: on_square_click(event, chess_canvas, board, game_state))
+
+    # === Create Buttons (Draw, Resign) ===
+    draw_button = tk.Button(canvas, text="Offer Draw", width=15)
+    resign_button = tk.Button(canvas, text="Resign", width=15)
+
+    canvas.create_window(window.winfo_screenwidth()/2 + 100, BOARD_SIZE + 25, window=draw_button)
+    canvas.create_window(window.winfo_screenwidth()/2 - 100, BOARD_SIZE + 25, window=resign_button)
+
+    # === Left: Chat Frame ===
+    chat_frame = tk.Frame(canvas, bg="white", bd=2, relief="ridge")
+    canvas.create_window(window.winfo_screenwidth()/2 - BOARD_SIZE/2 - 200, 200, window=chat_frame)  # Adjust position
+
+    # Chat display area
+    chat_display = tk.Text(chat_frame, height=15, width=30, state="disabled", bg="white", wrap="word")
+    chat_display.grid(row=0, column=0, padx=5, pady=5)
+
+    # Entry field for typing
+    chat_entry = tk.Entry(chat_frame, width=30)
+    chat_entry.grid(row=1, column=0, padx=5, pady=5)
+
+    def send_message(event=None):
+        message = chat_entry.get()
+        if message.strip() != "":
+            chat_display.configure(state="normal")
+            chat_display.insert(tk.END, f"You: {message}\n")
+            chat_display.configure(state="disabled")
+            chat_display.see(tk.END)
+            chat_entry.delete(0, tk.END)
+
+    chat_entry.bind("<Return>", send_message)
+
+
+    def send_message(event=None):
+        message = chat_entry.get()
+        if message.strip() != "":
+            chat_display.configure(state="normal")
+            chat_display.insert(tk.END, f"You: {message}\n")
+            chat_display.configure(state="disabled")
+            chat_display.see(tk.END)
+            chat_entry.delete(0, tk.END)
+
+    chat_entry.bind("<Return>", send_message)  # Press Enter to send
+
+
+
+'''if __name__ == "__main__":
+    main()'''

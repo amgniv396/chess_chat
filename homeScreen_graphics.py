@@ -2,10 +2,22 @@ import tkinter as tk
 import ttkbootstrap as tb
 from PIL import Image, ImageTk
 import math
+import chess_graphics
+'''
+def return_to_homescreen():
+    # Clear the current screen (e.g. game canvas)
+    for widget in window.winfo_children():
+        widget.pack_forget()
+        widget.place_forget()
 
-from PIL.ImageWin import Window
-from pygame.examples.cursors import image
-
+    # Show homescreen elements again
+    bg_frame.pack(fill="both", expand=True)
+    canvas.pack(fill="both", expand=True)
+    logo_label.place(relx=0.5, rely=0.3, anchor=tk.CENTER)
+    title_label.place(relx=0.5, rely=0.47, anchor=tk.CENTER)
+    start_button.place(relx=0.5, rely=0.6, anchor=tk.CENTER)
+    exit_button.place(relx=0.5, rely=0.7, anchor=tk.CENTER)
+    settings_button.place(relx=0.955)'''
 
 def exit_game():
     window.quit()
@@ -188,7 +200,7 @@ title_label.place(relx=0.5, rely=0.47, anchor=tk.CENTER)  # Position it between 
 
 
 # Create buttons on top of the rounded rectangle
-start_button = tb.Button(window, text="Start Game", command=lambda: print("Game Starting..."), bootstyle="success",
+start_button = tb.Button(window, text="Start Game", command=lambda: chess_graphics.start_game(window), bootstyle="success",
                          padding=15, width=15)
 start_button.place(relx=0.5, rely=0.6, anchor=tk.CENTER)
 
