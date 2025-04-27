@@ -183,11 +183,11 @@ def start_game(window):
     canvas.create_window(window.winfo_screenwidth()/2 - 100, BOARD_SIZE + 25, window=resign_button)
 
     # === Left: Chat Frame ===
-    chat_frame = tk.Frame(canvas, bg="white", bd=2, relief="ridge")
-    canvas.create_window(window.winfo_screenwidth()/2 - BOARD_SIZE/2 - 200, 200, window=chat_frame)  # Adjust position
+    chat_frame = tk.Frame(canvas, bg="white", bd=5, relief="ridge")
+    canvas.create_window(window.winfo_screenwidth()/2 - BOARD_SIZE/2 - 150, 400, window=chat_frame)  # Adjust position
 
     # Chat display area
-    chat_display = tk.Text(chat_frame, height=15, width=30, state="disabled", bg="white", wrap="word")
+    chat_display = tk.Text(chat_frame, height=40, width=30, state="disabled", bg="white", wrap="word")
     chat_display.grid(row=0, column=0, padx=5, pady=5)
 
     # Entry field for typing
@@ -204,19 +204,6 @@ def start_game(window):
             chat_entry.delete(0, tk.END)
 
     chat_entry.bind("<Return>", send_message)
-
-
-    def send_message(event=None):
-        message = chat_entry.get()
-        if message.strip() != "":
-            chat_display.configure(state="normal")
-            chat_display.insert(tk.END, f"You: {message}\n")
-            chat_display.configure(state="disabled")
-            chat_display.see(tk.END)
-            chat_entry.delete(0, tk.END)
-
-    chat_entry.bind("<Return>", send_message)  # Press Enter to send
-
 
 
 '''if __name__ == "__main__":
