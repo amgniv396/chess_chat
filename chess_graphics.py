@@ -1,210 +1,51 @@
-import tkinter
-
-import ttkbootstrap as ttk
-from PIL import Image, ImageTk
-import chess
 import tkinter as tk
+import chess
 
-import homeScreen_graphics
-
-# Board and Piece Dimensions
 BOARD_SIZE = 800
-SQUARE_SIZE = BOARD_SIZE // 8
 
-PIECE_SIZE_TO_SQUARE = 15
-
-piece_images = {}
-COLORS = {'odd': '#83CB72', 'even': '#DCE2D6'}
-
-CIRCLE_CONST = 35
-
-
-def load_images():
-    piece_names = {
-        'r': "white rook",
-        'n': "white knight",
-        'b': "white bishop",
-        'q': "white queen",
-        'k': "white king",
-        'p': "white pawn",
-        'R': "black rook",
-        'N': "black knight",
-        'B': "black bishop",
-        'Q': "black queen",
-        'K': "black king",
-        'P': "black pawn",
-    }
-
-    for key, name in piece_names.items():
-        img = Image.open(f"assets/pieces/{name}.png")
-        img = img.resize((SQUARE_SIZE - PIECE_SIZE_TO_SQUARE, SQUARE_SIZE - PIECE_SIZE_TO_SQUARE))
-        piece_images[key] = ImageTk.PhotoImage(img)
-
-
-def draw_board(canvas):
-    for row in range(8):
-        for col in range(8):
-            color = COLORS['odd'] if (row + col) % 2 == 0 else COLORS['even']
-            canvas.create_rectangle(col * SQUARE_SIZE, row * SQUARE_SIZE, (col + 1) * SQUARE_SIZE,
-                                    (row + 1) * SQUARE_SIZE, fill=color, outline="")
-
-
-def draw_pieces(canvas, fen: str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"):
-    board_fen = fen.split()[0].replace('/', '')
-    i = 0
-    for piece_fen_representation in board_fen:
-        if piece_fen_representation.isdigit():
-            i += int(piece_fen_representation)
-        else:
-            canvas.create_image((i % 8) * SQUARE_SIZE + PIECE_SIZE_TO_SQUARE / 2,
-                                (i // 8) * SQUARE_SIZE + PIECE_SIZE_TO_SQUARE / 2, anchor="nw",
-                                image=piece_images[piece_fen_representation])
-            i += 1
-
-
-def on_square_click(event, canvas, board, game_state):
-    row = event.y // SQUARE_SIZE
-    col = event.x // SQUARE_SIZE
-    square = chess.square(col, 7 - row)
-    piece = board.piece_at(square)
-
-    if game_state["selected"]:
-        move = chess.Move(game_state["selected"], square)
-        if move in board.legal_moves:
-            board.push(move)
-            game_state["selected"] = None
-            game_state["current_player"] = not game_state["current_player"]
-
-            '''# Check for game over
-            if board.is_game_over():
-                print("Game over!")
-                #homeScreen_graphics.return_to_homescreen()
-                return'''
-        else:
-            game_state["selected"] = square
-    elif piece and piece.color == game_state["current_player"]:
-        game_state["selected"] = square
-
-    update_board(canvas, board, game_state)
-
-
-# Update the board and pieces
-def update_board(canvas, board, game_state):
-    canvas.delete("all")
-    draw_board(canvas)
-    draw_pieces(canvas, board.fen())
-
-    # Highlight selected square
-    if game_state["selected"]:
-        row = 7 - chess.square_rank(game_state["selected"])
-        col = chess.square_file(game_state["selected"])
-        x1 = col * SQUARE_SIZE
-        y1 = row * SQUARE_SIZE
-        x2 = x1 + SQUARE_SIZE
-        y2 = y1 + SQUARE_SIZE
-        canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=3)
-
-        for move in board.legal_moves:
-            if move.from_square == game_state["selected"]:
-                row = 7 - move.to_square // 8
-                col = move.to_square % 8
-                x1 = col * SQUARE_SIZE
-                y1 = row * SQUARE_SIZE
-                x2 = x1 + SQUARE_SIZE
-                y2 = y1 + SQUARE_SIZE
-                canvas.create_oval(x1 + CIRCLE_CONST, y1 + CIRCLE_CONST, x2 - CIRCLE_CONST, y2 - CIRCLE_CONST,
-                                   fill="gray")
-
-
-# Main function
-def main():
-    app = ttk.Window(themename="darkly")
-    app.title("chess-chat game")
-    app.geometry(f"{BOARD_SIZE}x{BOARD_SIZE}")
-
-    load_images()
-
-    board = chess.Board()
-    game_state = {"selected": None, "current_player": chess.WHITE}
-
-    canvas = ttk.tk.Canvas(app, width=BOARD_SIZE, height=BOARD_SIZE)
-    canvas.pack()
-
-    draw_board(canvas)
-    draw_pieces(canvas)
-
-    canvas.bind("<Button-1>", lambda event: on_square_click(event, canvas, board, game_state))
-
-    app.mainloop()
-
-def start_game(window):
-    # Hide home screen
+def start_game(window, return_to_home):
+    # Clear window
     for widget in window.winfo_children():
-        widget.pack_forget()
-        widget.place_forget()
+        widget.destroy()
 
-    # Create background frame and canvas
-    bg_frame = tk.Frame(window)
-    bg_frame.pack(fill="both", expand=True)
+    # Game screen frame
+    game_frame = tk.Frame(window, bg="white")
+    game_frame.pack(fill="both", expand=True)
 
-    canvas = tk.Canvas(bg_frame, width=500, height=500)
-    canvas.pack(fill="both", expand=True)
+    # Chess canvas
+    chess_canvas = tk.Canvas(game_frame, width=BOARD_SIZE, height=BOARD_SIZE, bg="white", bd=5, relief="ridge")
+    chess_canvas.pack(pady=20)
 
-    # Load images
-    bg_image = ImageTk.PhotoImage(
-        Image.open("assets/utils/chessBackground.jpg").resize(
-            (window.winfo_screenwidth(), window.winfo_screenheight()))
-    )
+    # Buttons frame
+    buttons_frame = tk.Frame(game_frame, bg="white")
+    buttons_frame.pack()
 
-    # Place background image
-    canvas.bg_image = bg_image  # Save reference!
-    canvas.create_image(0, 0, image=bg_image, anchor=tk.NW)
+    draw_button = tk.Button(buttons_frame, text="Offer Draw", width=15)
+    draw_button.pack(side="left", padx=10)
 
-    # === Create Chess Canvas ===
-    chess_canvas = tk.Canvas(canvas, width=BOARD_SIZE, height=BOARD_SIZE, bd=5, relief="ridge")
-    chess_canvas.pack()
+    resign_button = tk.Button(buttons_frame, text="Resign", width=15,
+                               command=lambda: return_to_home(window))
+    resign_button.pack(side="left", padx=10)
 
-    # Load images and draw board
-    load_images()
+    # Set up chess logic
+    setup_chess(chess_canvas)
+
+def setup_chess(chess_canvas):
     board = chess.Board()
-    game_state = {"selected": None, "current_player": chess.WHITE}
 
-    draw_board(chess_canvas)
-    draw_pieces(chess_canvas)
+    SQUARE_SIZE = BOARD_SIZE // 8
 
-    # Bind clicks
-    chess_canvas.bind("<Button-1>", lambda event: on_square_click(event, chess_canvas, board, game_state))
+    def draw_board():
+        colors = ["#83CB72", "#DCE2D6"]
+        for row in range(8):
+            for col in range(8):
+                color = colors[(row + col) % 2]
+                chess_canvas.create_rectangle(
+                    col * SQUARE_SIZE, row * SQUARE_SIZE,
+                    (col + 1) * SQUARE_SIZE, (row + 1) * SQUARE_SIZE,
+                    fill=color, outline=""
+                )
 
-    # === Create Buttons (Draw, Resign) ===
-    draw_button = tk.Button(canvas, text="Offer Draw", width=15)
-    resign_button = tk.Button(canvas, text="Resign", width=15)
+    draw_board()
 
-    canvas.create_window(window.winfo_screenwidth()/2 + 100, BOARD_SIZE + 25, window=draw_button)
-    canvas.create_window(window.winfo_screenwidth()/2 - 100, BOARD_SIZE + 25, window=resign_button)
-
-    # === Left: Chat Frame ===
-    chat_frame = tk.Frame(canvas, bg="white", bd=5, relief="ridge")
-    canvas.create_window(window.winfo_screenwidth()/2 - BOARD_SIZE/2 - 150, 400, window=chat_frame)  # Adjust position
-
-    # Chat display area
-    chat_display = tk.Text(chat_frame, height=40, width=30, state="disabled", bg="white", wrap="word")
-    chat_display.grid(row=0, column=0, padx=5, pady=5)
-
-    # Entry field for typing
-    chat_entry = tk.Entry(chat_frame, width=30)
-    chat_entry.grid(row=1, column=0, padx=5, pady=5)
-
-    def send_message(event=None):
-        message = chat_entry.get()
-        if message.strip() != "":
-            chat_display.configure(state="normal")
-            chat_display.insert(tk.END, f"You: {message}\n")
-            chat_display.configure(state="disabled")
-            chat_display.see(tk.END)
-            chat_entry.delete(0, tk.END)
-
-    chat_entry.bind("<Return>", send_message)
-
-
-'''if __name__ == "__main__":
-    main()'''
+    # You can extend this to draw pieces, handle clicks, etc.
