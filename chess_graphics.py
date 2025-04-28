@@ -62,7 +62,7 @@ def draw_pieces(canvas, fen: str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR 
             i += 1
 
 
-def on_square_click(event, canvas, board, game_state):
+def on_square_click(event, canvas, board, game_state, return_to_homescreen):
     row = event.y // SQUARE_SIZE
     col = event.x // SQUARE_SIZE
     square = chess.square(col, 7 - row)
@@ -75,11 +75,20 @@ def on_square_click(event, canvas, board, game_state):
             game_state["selected"] = None
             game_state["current_player"] = not game_state["current_player"]
 
-            '''# Check for game over
-            if board.is_game_over():
+            # Check for game over
+            if not board.is_game_over():
                 print("Game over!")
-                #homeScreen_graphics.return_to_homescreen()
-                return'''
+
+                if board.result() == "1-0":
+                    result_text = "You Win!" if game_state["current_player"] == chess.BLACK else "You Lose!"
+                elif board.result() == "0-1":
+                    result_text = "You Win!" if game_state["current_player"] == chess.WHITE else "You Lose!"
+                else:
+                    result_text = "Draw!"
+
+                show_game_over_screen(canvas, result_text, return_to_homescreen)
+                return
+
         else:
             game_state["selected"] = square
     elif piece and piece.color == game_state["current_player"]:
@@ -137,7 +146,7 @@ def main():
 
     app.mainloop()
 
-def start_game(window):
+def start_game(window, return_to_homescreen):
     # Hide home screen
     for widget in window.winfo_children():
         widget.pack_forget()
@@ -173,11 +182,11 @@ def start_game(window):
     draw_pieces(chess_canvas)
 
     # Bind clicks
-    chess_canvas.bind("<Button-1>", lambda event: on_square_click(event, chess_canvas, board, game_state))
+    chess_canvas.bind("<Button-1>", lambda event: on_square_click(event, chess_canvas, board, game_state, return_to_homescreen))
 
     # === Create Buttons (Draw, Resign) ===
     draw_button = tk.Button(canvas, text="Offer Draw", width=15)
-    resign_button = tk.Button(canvas, text="Resign", width=15)
+    resign_button = tk.Button(canvas, text="Resign", width=15, command=return_to_homescreen)
 
     canvas.create_window(window.winfo_screenwidth()/2 + 100, BOARD_SIZE + 25, window=draw_button)
     canvas.create_window(window.winfo_screenwidth()/2 - 100, BOARD_SIZE + 25, window=resign_button)
@@ -208,3 +217,37 @@ def start_game(window):
 
 '''if __name__ == "__main__":
     main()'''
+
+def show_game_over_screen(canvas, result_text, return_to_homescreen):
+    # Center of the canvas
+    center_x = canvas.winfo_width() / 2
+    center_y = canvas.winfo_height() / 2
+
+    rect_width = 300
+    rect_height = 400
+
+    # Draw a semi-transparent dark rectangle behind everything (optional)
+    canvas.create_rectangle(0, 0, canvas.winfo_width(), canvas.winfo_height(),
+                             fill="#000000", stipple="gray50", outline="")
+
+    # Draw rounded rectangle
+    homeScreen_graphics.create_rounded_rectangle(
+        canvas,
+        center_x - rect_width/2,
+        center_y - rect_height/2,
+        center_x + rect_width/2,
+        center_y + rect_height/2,
+        radius=40,
+        fill="#111111",
+        outline="#333333",
+        width=2
+    )
+
+    # Draw game result text
+    canvas.create_text(center_x, center_y - rect_height/4,
+                       text=result_text, font=("Arial", 24, "bold"), fill="white")
+
+    # Create "Return Home" button directly on the canvas
+    return_button = tk.Button(canvas, text="Return Home", font=("Arial", 14),
+                              command=return_to_homescreen)
+    canvas.create_window(center_x, center_y + rect_height/4, window=return_button)
