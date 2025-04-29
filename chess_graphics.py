@@ -76,19 +76,9 @@ def on_square_click(event, canvas, board, game_state, return_to_homescreen):
             game_state["current_player"] = not game_state["current_player"]
 
             # Check for game over
-            if not board.is_game_over():
+            if board.is_game_over():
                 print("Game over!")
-
-                if board.result() == "1-0":
-                    result_text = "You Win!" if game_state["current_player"] == chess.BLACK else "You Lose!"
-                elif board.result() == "0-1":
-                    result_text = "You Win!" if game_state["current_player"] == chess.WHITE else "You Lose!"
-                else:
-                    result_text = "Draw!"
-
-                show_game_over_screen(canvas, result_text, return_to_homescreen)
-                return
-
+                canvas.after(2000, lambda: show_game_over_screen(canvas, game_result(board), return_to_homescreen))
         else:
             game_state["selected"] = square
     elif piece and piece.color == game_state["current_player"]:
@@ -96,6 +86,15 @@ def on_square_click(event, canvas, board, game_state, return_to_homescreen):
 
     update_board(canvas, board, game_state)
 
+def game_result(board):
+    if board.result() == "1-0":
+        result_text = "Black wins!"
+    elif board.result() == "0-1":
+        result_text = "White wins!"
+    else:
+        result_text = "Draw!"
+
+    return result_text
 
 # Update the board and pieces
 def update_board(canvas, board, game_state):
