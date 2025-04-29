@@ -12,6 +12,68 @@ window.attributes('-fullscreen', True)
 # Configure ttkbootstrap style
 tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
 
+def show_settings_overlay():
+    # === Create an overlay frame ===
+    overlay = tk.Frame(window, bg="", width=window.winfo_screenwidth(), height=window.winfo_screenheight())
+    overlay.place(x=0, y=0)
+
+    # Force overlay to the top
+    overlay.lift()
+    overlay.tkraise()
+
+    # Semi-transparent dark background
+    dark_bg = tk.Canvas(overlay, width=window.winfo_screenwidth(), height=window.winfo_screenheight(),
+                        bg="#000000", highlightthickness=0)
+    dark_bg.pack(fill="both", expand=True)
+    dark_bg.create_rectangle(0, 0, window.winfo_screenwidth(), window.winfo_screenheight(),
+                             fill="#000000", stipple="gray50", outline="")
+
+    # Center panel
+    center_x = window.winfo_screenwidth() / 2
+    center_y = window.winfo_screenheight() / 2
+    rect_width = 500
+    rect_height = 400
+
+    create_rounded_rectangle(
+        dark_bg,
+        center_x - rect_width / 2,
+        center_y - rect_height / 2,
+        center_x + rect_width / 2,
+        center_y + rect_height / 2,
+        radius=30,
+        fill="#222222",
+        outline="#444444",
+        width=2
+    )
+
+    # === Settings title ===
+    dark_bg.create_text(center_x, center_y - 150, text="Settings", font=("Arial", 24, "bold"), fill="white")
+
+    # === Sound Slider ===
+    volume_label = tk.Label(overlay, text="Sound Volume", bg="#222222", fg="white", font=("Arial", 12))
+    volume_label.place(x=center_x - 80, y=center_y - 100)
+
+    volume_slider = tk.Scale(overlay, from_=0, to=100, orient=tk.HORIZONTAL, length=200, bg="#222222",
+                             fg="white", troughcolor="#444444", highlightthickness=0)
+    volume_slider.set(50)
+    volume_slider.place(x=center_x - 100, y=center_y - 80)
+
+    # === Texture Options ===
+    textures = ["black bishop", "black king", "black knight"]
+    for i, tex in enumerate(textures):
+        img = ImageTk.PhotoImage(Image.open(f"assets/pieces/{tex}.png").resize((80, 80)))
+        label = tk.Label(overlay, image=img, bg="#222222", borderwidth=2, relief="ridge")
+        label.image = img
+        label.place(x=center_x - 130 + i * 100, y=center_y)
+
+    # === Close Button ===
+    close_btn = tk.Button(overlay, text="X", command=overlay.destroy, font=("Arial", 12, "bold"),
+                          bg="red", fg="white", width=3)
+    close_btn.place(x=center_x + rect_width / 2 - 30, y=center_y - rect_height / 2 + 10)
+
+
+
+
 # ----------------- Utility functions -----------------
 
 def exit_game():
@@ -185,7 +247,7 @@ def create_home_screen():
     settings_image = ImageTk.PhotoImage(Image.open("assets/utils/settingsIcon.png").resize((50, 50)))
     settings_button = tb.Button(
         window, image=settings_image,
-        command=lambda: print("Settings"),
+        command=lambda: show_settings_overlay(),
         bootstyle="secondary"
     )
     settings_button.place(relx=0.955)
