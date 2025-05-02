@@ -12,7 +12,7 @@ window.attributes('-fullscreen', True)
 # Configure ttkbootstrap style
 tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
 
-def show_settings_overlay():
+def show_settings_overlay(): #TODO: add textures and sound
     # === Create an overlay frame ===
     overlay = tk.Frame(window, bg="", width=window.winfo_screenwidth(), height=window.winfo_screenheight())
     overlay.place(x=0, y=0)
