@@ -170,7 +170,7 @@ def start_game(window, return_to_homescreen):
 
     # === Create Chess Canvas ===
     chess_canvas = tk.Canvas(canvas, width=BOARD_SIZE, height=BOARD_SIZE, bd=5, relief="ridge")
-    chess_canvas.pack()
+    chess_canvas.place(relx=0.5, rely=0.5, anchor="center")
 
     # Load images and draw board
     load_images()
@@ -187,12 +187,12 @@ def start_game(window, return_to_homescreen):
     draw_button = tk.Button(canvas, text="Offer Draw", width=15)
     resign_button = tk.Button(canvas, text="Resign", width=15, command=return_to_homescreen)
 
-    canvas.create_window(window.winfo_screenwidth()/2 + 100, BOARD_SIZE + 25, window=draw_button)
-    canvas.create_window(window.winfo_screenwidth()/2 - 100, BOARD_SIZE + 25, window=resign_button)
+    canvas.create_window(window.winfo_screenwidth()/2 + 100, window.winfo_screenheight()/2+BOARD_SIZE/2 + 25, window=draw_button)
+    canvas.create_window(window.winfo_screenwidth()/2 - 100, window.winfo_screenheight()/2+BOARD_SIZE/2 + 25, window=resign_button)
 
     # === Left: Chat Frame ===
     chat_frame = tk.Frame(canvas, bg="white", bd=5, relief="ridge")
-    canvas.create_window(window.winfo_screenwidth()/2 - BOARD_SIZE/2 - 150, 400, window=chat_frame)  # Adjust position
+    canvas.create_window(window.winfo_screenwidth()/2 - BOARD_SIZE/2 - 150, window.winfo_screenheight()/2, window=chat_frame)  # Adjust position
 
     # Chat display area
     chat_display = tk.Text(chat_frame, height=40, width=30, state="disabled", bg="white", wrap="word")
