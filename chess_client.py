@@ -1,3 +1,4 @@
+# chess_client_module.py
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 
@@ -8,24 +9,30 @@ ADDR = (HOST, PORT)
 
 client_socket = socket(AF_INET, SOCK_STREAM)
 client_socket.connect(ADDR)
-client_socket.send(bytes("Player1", "utf8"))  # Send a name immediately
-
-
+client_socket.send(bytes("Player1", "utf8"))  # Send name when connecting
 def receive():
-    """Handles receiving of messages."""
+
+    """Continuously receives messages from the server."""
     while True:
         try:
             msg = client_socket.recv(BUFSIZ).decode("utf8")
+            if not msg:
+                break
             print(f"Server: {msg}")
-        except OSError:
+        except (ConnectionResetError, ConnectionAbortedError, OSError):
+            print("Connection lost.")
             break
 
-def send(msg):
-    """Sends a message to the server."""
-    client_socket.send(bytes(msg, "utf8"))
-    if msg == "{quit}":
-        client_socket.close()
-
-# Start receiving thread
 receive_thread = Thread(target=receive, daemon=True)
 receive_thread.start()
+
+def send_message(msg):
+    """Send a message to the server."""
+    try:
+        client_socket.send(bytes(msg, "utf8"))
+    except OSError:
+        pass
+
+def stop_client():
+    send_message("{quit}")
+    client_socket.close()

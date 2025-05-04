@@ -3,7 +3,10 @@ import ttkbootstrap as tb
 from PIL import Image, ImageTk
 import math
 import chess_graphics
+from chess_client import send_message
 import subprocess
+import sys
+
 
 # Initialize main window
 window = tk.Tk()
@@ -12,7 +15,7 @@ window.attributes('-fullscreen', True)
 
 # Configure ttkbootstrap style
 tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
-subprocess.Popen(["python", "chess_client.py"])
+#subprocess.Popen(["python", "chess_client.py"])
 def show_settings_overlay(): #TODO: add textures and sound
     # === Create an overlay frame ===
     overlay = tk.Frame(window, bg="", width=window.winfo_screenwidth(), height=window.winfo_screenheight())
@@ -76,6 +79,10 @@ def show_settings_overlay(): #TODO: add textures and sound
 
 
 # ----------------- Utility functions -----------------
+
+def start_game():
+    send_message("{enter_game}")
+    chess_graphics.start_game(window, return_to_homescreen)
 
 def exit_game():
     window.quit()
@@ -233,7 +240,7 @@ def create_home_screen():
     # Start and Exit buttons
     start_button = tb.Button(
         window, text="Start Game",
-        command=lambda: chess_graphics.start_game(window, return_to_homescreen),
+        command=start_game,
         bootstyle="success", padding=15, width=15
     )
     start_button.place(relx=0.5, rely=0.6, anchor=tk.CENTER)
