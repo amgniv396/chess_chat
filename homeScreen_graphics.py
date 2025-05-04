@@ -3,6 +3,7 @@ import ttkbootstrap as tb
 from PIL import Image, ImageTk
 import math
 import chess_graphics
+import subprocess
 
 # Initialize main window
 window = tk.Tk()
@@ -11,7 +12,7 @@ window.attributes('-fullscreen', True)
 
 # Configure ttkbootstrap style
 tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
-
+subprocess.Popen(["python", "chess_client.py"])
 def show_settings_overlay(): #TODO: add textures and sound
     # === Create an overlay frame ===
     overlay = tk.Frame(window, bg="", width=window.winfo_screenwidth(), height=window.winfo_screenheight())

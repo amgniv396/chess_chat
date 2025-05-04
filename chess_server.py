@@ -176,6 +176,7 @@ def handle_client(client):
                     client.send(bytes("{error}No partner to send to.", "utf8"))
 
         except (ConnectionResetError, ConnectionAbortedError):
+            print('error')
             break
 
     # Cleanup on disconnect
