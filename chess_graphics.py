@@ -5,6 +5,9 @@ from PIL import Image, ImageTk
 import chess
 import tkinter as tk
 
+from chess.svg import board
+
+from chess_client import send_message
 import homeScreen_graphics
 
 # Board and Piece Dimensions
@@ -18,6 +21,8 @@ COLORS = {'odd': '#83CB72', 'even': '#DCE2D6'}
 
 CIRCLE_CONST = 35
 
+def send_move(move):
+    send_message("{move}" + move)
 
 def load_images():
     piece_names = {
@@ -74,6 +79,7 @@ def on_square_click(event, canvas, board, game_state, return_to_homescreen):
             board.push(move)
             game_state["selected"] = None
             game_state["current_player"] = not game_state["current_player"]
+            send_move(move)
 
             # Check for game over
             if board.is_game_over():
@@ -145,6 +151,9 @@ def main():
 
     app.mainloop()
 
+board = chess.Board()
+game_state = {"selected": None, "current_player": chess.WHITE}
+
 def start_game(window, return_to_homescreen):
     # Hide home screen
     for widget in window.winfo_children():
@@ -174,8 +183,6 @@ def start_game(window, return_to_homescreen):
 
     # Load images and draw board
     load_images()
-    board = chess.Board()
-    game_state = {"selected": None, "current_player": chess.WHITE}
 
     draw_board(chess_canvas)
     draw_pieces(chess_canvas)

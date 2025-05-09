@@ -266,6 +266,7 @@ def create_home_screen():
     create_hexagon_grid(canvas, hex_x, hex_y, 60)
 
 def return_to_homescreen():
+    send_message("{quit_game}")
     # Destroy all current widgets
     for widget in window.winfo_children():
         widget.destroy()

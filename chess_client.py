@@ -9,10 +9,8 @@ ADDR = (HOST, PORT)
 
 client_socket = socket(AF_INET, SOCK_STREAM)
 client_socket.connect(ADDR)
-client_socket.send(bytes("Player1", "utf8"))  # Send name when connecting
+client_socket.send(bytes("Player1", "utf8"))  # Send name when connecting #TODO:get name
 def receive():
-
-    """Continuously receives messages from the server."""
     while True:
         try:
             msg = client_socket.recv(BUFSIZ).decode("utf8")
@@ -28,6 +26,7 @@ receive_thread.start()
 
 def send_message(msg):
     """Send a message to the server."""
+    #TODO: check for BUFSIZ
     try:
         client_socket.send(bytes(msg, "utf8"))
     except OSError:
