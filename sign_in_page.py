@@ -6,6 +6,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import re
 from tkinter import messagebox
+from SQLL_database import UserDatabase
 
 
 class SignInApp(ttk.Window):
@@ -15,16 +16,11 @@ class SignInApp(ttk.Window):
         self.geometry("400x500")
         self.resizable(False, False)
 
-        # User database (In a real app, this would be a secure database)
-        self.users = {
-            "user@example.com": "password123"
-        }
+        # Initialize database
+        self.db = UserDatabase()
 
-        # Pending users awaiting verification
-        self.pending_users = {}
-
-        # Email verification code storage
-        self.verification_codes = {}
+        # Add sample user for testing if needed
+        self.db.add_sample_user()
 
         # Create main container
         self.main_container = ttk.Frame(self)
@@ -48,6 +44,10 @@ class SignInApp(ttk.Window):
 
         # Add variable to track current verification mode
         self.verification_mode = "password_reset"  # or "signup"
+
+        # Track current email for verification purposes
+        self.current_email = ""
+        self.current_reset_code = ""
 
         # Show sign in page by default
         self.show_sign_in_page()
@@ -73,10 +73,10 @@ class SignInApp(ttk.Window):
         # Title
         ttk.Label(self.sign_in_frame, text="Sign In", font=("Helvetica", 24, "bold")).pack(pady=20)
 
-        # Username
+        # Username or Email
         self.username_entry = ttk.Entry(self.sign_in_frame, width=30)
         self.username_entry.pack(pady=10)
-        self.set_placeholder(self.username_entry, "Username")
+        self.set_placeholder(self.username_entry, "Username or Email")
 
         # Password
         self.password_entry = ttk.Entry(self.sign_in_frame, width=30, show="*")
@@ -338,29 +338,21 @@ class SignInApp(ttk.Window):
         self.signup_verification_frame.pack_forget()
 
     def sign_in(self):
-        username = self.username_entry.get()
+        username_or_email = self.username_entry.get()
         password = self.password_entry.get()
 
         # Check if fields contain placeholders
-        if username == "Username" or password == "Password":
-            messagebox.showerror("Error", "Please enter both username and password")
+        if username_or_email == "Username or Email" or password == "Password":
+            messagebox.showerror("Error", "Please enter both username/email and password")
             return
 
-        if username in self.users and self.users[username] == password:
-            messagebox.showinfo("Success", f"Welcome back, {username}!")
+        # Authenticate with database
+        success, result = self.db.authenticate_user(username_or_email, password)
+
+        if success:
+            messagebox.showinfo("Success", f"Welcome back, {result['username']}!")
         else:
-            messagebox.showerror("Error", "Invalid username or password")
-
-    def sign_out(self):
-        if hasattr(self, 'username_entry'):
-            self.username_entry.delete(0, 'end')
-            self.set_placeholder(self.username_entry, "Username")
-
-        if hasattr(self, 'password_entry'):
-            self.password_entry.delete(0, 'end')
-            self.set_placeholder(self.password_entry, "Password")
-
-        messagebox.showinfo("Success", "Signed out successfully")
+            messagebox.showerror("Error", result)
 
     def send_password_reset_verification_code(self):
         email = self.forgot_email_entry.get()
@@ -373,20 +365,24 @@ class SignInApp(ttk.Window):
             messagebox.showerror("Error", "Please enter a valid email address")
             return
 
-        # Check if email exists in user database
-        email_exists = False
-        for user, value in self.users.items():
-            if user == email or value == email:
-                email_exists = True
-                break
-
-        if not email_exists:
+        # Check if email exists in database
+        if not self.db.email_exists(email):
             messagebox.showerror("Error", "Email not found in our records")
             return
 
         # Generate a random 6-digit code
         code = str(random.randint(100000, 999999))
-        self.verification_codes[email] = code
+
+        # Store code in database
+        success, message = self.db.create_password_reset(email, code)
+
+        if not success:
+            messagebox.showerror("Error", message)
+            return
+
+        # Save current email and code for verification
+        self.current_email = email
+        self.current_reset_code = code
 
         # Send email with verification code
         self.send_verification_email(email, code, "Password Reset")
@@ -410,8 +406,12 @@ class SignInApp(ttk.Window):
             messagebox.showerror("Error", "Please enter a valid email address")
             return
 
-        if email in self.users or username in self.users:
-            messagebox.showerror("Error", "Username or email already exists")
+        if self.db.email_exists(email):
+            messagebox.showerror("Error", "Email already exists")
+            return
+
+        if self.db.username_exists(username):
+            messagebox.showerror("Error", "Username already exists")
             return
 
         if password != confirm_password:
@@ -422,16 +422,20 @@ class SignInApp(ttk.Window):
             messagebox.showerror("Error", "Password must be at least 8 characters long")
             return
 
-        # Store pending user details
-        self.pending_users[email] = {
-            "username": username,
-            "password": password,
-            "email": email
-        }
-
         # Generate and send verification code
         code = str(random.randint(100000, 999999))
-        self.verification_codes[email] = code
+
+        # Add to pending users
+        success = self.db.add_pending_user(username, email, password, code)
+
+        if not success:
+            messagebox.showerror("Error", "Failed to register user")
+            return
+
+        # Save current email
+        self.current_email = email
+
+        # Send verification email
         self.send_verification_email(email, code, "Account Verification")
 
         # Navigate to signup verification page
@@ -466,69 +470,70 @@ class SignInApp(ttk.Window):
             self.send_password_reset_verification_code()
 
     def resend_signup_verification_code(self):
-        email = self.signup_email_entry.get()
-        if email in self.pending_users:
+        email = self.current_email
+
+        if email:
             # Generate a new code
             code = str(random.randint(100000, 999999))
-            self.verification_codes[email] = code
-            self.send_verification_email(email, code, "Account Verification")
+
+            # Update verification code in database
+            success, message = self.db.resend_verification(email, code)
+
+            if success:
+                self.send_verification_email(email, code, "Account Verification")
+            else:
+                messagebox.showerror("Error", message)
         else:
             messagebox.showerror("Error", "Invalid email address")
 
     def verify_code(self):
-        email = self.forgot_email_entry.get()
         code = self.verification_code_entry.get()
+        email = self.current_email
 
         if code == "Verification Code":
             messagebox.showerror("Error", "Please enter the verification code")
             return
 
-        if email in self.verification_codes and self.verification_codes[email] == code:
+        if not email:
+            messagebox.showerror("Error", "Email not found")
+            return
+
+        # Verify code with database
+        success, message = self.db.verify_reset_code(email, code)
+
+        if success:
             messagebox.showinfo("Success", "Code verified successfully!")
-            # Navigate to reset password page if in password reset mode
-            if self.verification_mode == "password_reset":
-                self.show_reset_password_page()
+            self.current_reset_code = code
+            # Navigate to reset password page
+            self.show_reset_password_page()
         else:
-            messagebox.showerror("Error", "Invalid verification code")
+            messagebox.showerror("Error", message)
 
     def verify_signup_code(self):
-        email = None
-        for email_addr in self.pending_users:
-            email = email_addr
-            break
+        code = self.signup_verification_code_entry.get()
+        email = self.current_email
+
+        if code == "Verification Code":
+            messagebox.showerror("Error", "Please enter the verification code")
+            return
 
         if not email:
             messagebox.showerror("Error", "No pending registration found")
             return
 
-        code = self.signup_verification_code_entry.get()
+        # Verify code and complete registration
+        success, message = self.db.verify_user(email, code)
 
-        if code == "Verification Code":
-            messagebox.showerror("Error", "Please enter the verification code")
-            return
-
-        if email in self.verification_codes and self.verification_codes[email] == code:
-            # Complete registration
-            user_data = self.pending_users[email]
-            username = user_data["username"]
-            password = user_data["password"]
-
-            # Add the new user to the database
-            self.users[username] = password
-            self.users[email] = email  # Store email as well for verification
-
-            # Remove from pending users
-            del self.pending_users[email]
-
-            messagebox.showinfo("Success", f"Email verified! Account created for {username}!")
-
+        if success:
+            messagebox.showinfo("Success", "Email verified! Your account has been created!")
             # Navigate back to sign in page
             self.show_sign_in_page()
         else:
-            messagebox.showerror("Error", "Invalid verification code")
+            messagebox.showerror("Error", message)
 
     def reset_password(self):
-        email = self.forgot_email_entry.get()
+        email = self.current_email
+        reset_code = self.current_reset_code
         new_password = self.new_password_entry.get()
         confirm_password = self.confirm_password_entry.get()
 
@@ -544,25 +549,19 @@ class SignInApp(ttk.Window):
             messagebox.showerror("Error", "Password must be at least 8 characters long")
             return
 
-        # Update password in the database
-        for username, value in self.users.items():
-            if username == email or value == email:
-                self.users[username] = new_password
-                break
+        if not email or not reset_code:
+            messagebox.showerror("Error", "Invalid password reset session")
+            return
 
-        messagebox.showinfo("Success", "Password reset successfully!")
+        # Reset password in database
+        success, message = self.db.reset_password(email, reset_code, new_password)
 
-        # Navigate back to sign in page
-        self.show_sign_in_page()
-
-    def sign_up(self):
-        # This method is no longer used directly - see initiate_sign_up instead
-        pass
-
-    def return_to_previous_page(self):
-        # In a real app, this would navigate back to the previous page
-        # For this demo, we'll just exit the application
-        self.quit()
+        if success:
+            messagebox.showinfo("Success", message)
+            # Navigate back to sign in page
+            self.show_sign_in_page()
+        else:
+            messagebox.showerror("Error", message)
 
     def validate_email(self, email):
         # Simple email validation using regex
