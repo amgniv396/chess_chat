@@ -2,11 +2,7 @@ import tkinter as tk
 import ttkbootstrap as tb
 from PIL import Image, ImageTk
 import math
-import chess_graphics
-from chess_client import send_message
-import subprocess
-import sys
-
+import chess_client_graphics
 
 # Initialize main window
 window = tk.Tk()
@@ -15,8 +11,8 @@ window.attributes('-fullscreen', True)
 
 # Configure ttkbootstrap style
 tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
-#subprocess.Popen(["python", "chess_client.py"])
-def show_settings_overlay(): #TODO: add textures and sound
+
+def show_settings_overlay():
     # === Create an overlay frame ===
     overlay = tk.Frame(window, bg="", width=window.winfo_screenwidth(), height=window.winfo_screenheight())
     overlay.place(x=0, y=0)
@@ -75,16 +71,13 @@ def show_settings_overlay(): #TODO: add textures and sound
                           bg="red", fg="white", width=3)
     close_btn.place(x=center_x + rect_width / 2 - 30, y=center_y - rect_height / 2 + 10)
 
-
-
-
 # ----------------- Utility functions -----------------
 
 def start_game():
-    send_message("{enter_game}")
-    chess_graphics.start_game(window, return_to_homescreen)
+    chess_client_graphics.start_game(window, return_to_homescreen)
 
 def exit_game():
+    chess_client_graphics.stop_client()
     window.quit()
 
 def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
@@ -266,7 +259,7 @@ def create_home_screen():
     create_hexagon_grid(canvas, hex_x, hex_y, 60)
 
 def return_to_homescreen():
-    send_message("{quit_game}")
+    chess_client_graphics.send_message("{quit_game}")
     # Destroy all current widgets
     for widget in window.winfo_children():
         widget.destroy()
