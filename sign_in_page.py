@@ -7,14 +7,18 @@ from email.mime.multipart import MIMEMultipart
 import re
 from tkinter import messagebox
 from SQLL_database import UserDatabase
+import importlib
+import sys
+import os
 
 
 class SignInApp(ttk.Window):
     def __init__(self):
         super().__init__(themename="darkly")
         self.title("Authentication")
-        self.geometry("400x500")
-        self.resizable(False, False)
+
+        # Make the window fullscreen
+        self.attributes('-fullscreen', True)
 
         # Initialize database
         self.db = UserDatabase()
@@ -22,17 +26,25 @@ class SignInApp(ttk.Window):
         # Add sample user for testing if needed
         self.db.add_sample_user()
 
-        # Create main container
+        # Get screen dimensions
+        self.screen_width = self.winfo_screenwidth()
+        self.screen_height = self.winfo_screenheight()
+
+        # Create main container with centered content
         self.main_container = ttk.Frame(self)
-        self.main_container.pack(fill=BOTH, expand=True, padx=20, pady=30)
+        self.main_container.pack(fill=BOTH, expand=True)
+
+        # Create content frame to center the sign-in forms
+        self.content_frame = ttk.Frame(self.main_container, width=400, height=500)
+        self.content_frame.place(relx=0.5, rely=0.5, anchor=CENTER)
 
         # Create frames for different pages
-        self.sign_in_frame = ttk.Frame(self.main_container)
-        self.forgot_password_frame = ttk.Frame(self.main_container)
-        self.verification_frame = ttk.Frame(self.main_container)
-        self.reset_password_frame = ttk.Frame(self.main_container)
-        self.sign_up_frame = ttk.Frame(self.main_container)
-        self.signup_verification_frame = ttk.Frame(self.main_container)
+        self.sign_in_frame = ttk.Frame(self.content_frame)
+        self.forgot_password_frame = ttk.Frame(self.content_frame)
+        self.verification_frame = ttk.Frame(self.content_frame)
+        self.reset_password_frame = ttk.Frame(self.content_frame)
+        self.sign_up_frame = ttk.Frame(self.content_frame)
+        self.signup_verification_frame = ttk.Frame(self.content_frame)
 
         # Initialize pages
         self.init_sign_in_page()
@@ -51,6 +63,15 @@ class SignInApp(ttk.Window):
 
         # Show sign in page by default
         self.show_sign_in_page()
+
+        # Add a close button for exiting fullscreen
+        close_btn = ttk.Button(
+            self, text="×",
+            command=self.quit,
+            bootstyle="danger",
+            width=3
+        )
+        close_btn.place(x=self.screen_width - 50, y=10)
 
     def set_placeholder(self, entry, placeholder):
         entry.insert(0, placeholder)
@@ -337,6 +358,22 @@ class SignInApp(ttk.Window):
         self.sign_up_frame.pack(fill=BOTH, expand=True)
         self.signup_verification_frame.pack_forget()
 
+    def load_home_screen(self, username):
+        """Load the home screen module and transition to it"""
+        # Close the current window
+        self.destroy()
+
+        # Add the current directory to sys.path if it's not already there
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.append(current_dir)
+
+        # Import and run the home screen
+        try:
+            import homeScreen_graphics
+        except ImportError as e:
+            messagebox.showerror("Error", f"Could not load home screen: {str(e)}")
+
     def sign_in(self):
         username_or_email = self.username_entry.get()
         password = self.password_entry.get()
@@ -351,6 +388,8 @@ class SignInApp(ttk.Window):
 
         if success:
             messagebox.showinfo("Success", f"Welcome back, {result['username']}!")
+            # Load the home screen after successful login
+            self.load_home_screen(result['username'])
         else:
             messagebox.showerror("Error", result)
 
