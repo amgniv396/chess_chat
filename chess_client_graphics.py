@@ -241,6 +241,7 @@ def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen
 
     # Check if it's my turn
     if not game_state["my_turn"]:
+        #TODO: change
         if chat_display and chat_display.winfo_exists():
             chat_display.configure(state="normal")
             chat_display.insert(tk.END, "System: It's not your turn yet.\n")
@@ -359,14 +360,6 @@ def update_board(canvas, chess_board, game_state):
     # Add visual indicator for whose turn it is
     x_center = BOARD_SIZE / 2
     y_position = BOARD_SIZE - 15
-    if game_state["my_turn"]:
-        canvas.create_text(x_center, y_position,
-                           text="YOUR TURN", font=("Arial", 12, "bold"),
-                           fill="green")
-    else:
-        canvas.create_text(x_center, y_position,
-                           text="OPPONENT'S TURN", font=("Arial", 12, "bold"),
-                           fill="red")
 
 
 def start_game(window, return_to_homescreen):
