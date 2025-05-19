@@ -5,12 +5,12 @@ import math
 import chess_client_graphics
 
 # Initialize main window
-window = tk.Tk()
+'''window = tk.Tk()
 window.title("Chess App")
 window.attributes('-fullscreen', True)
 
 # Configure ttkbootstrap style
-tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
+tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))'''
 
 def show_settings_overlay():
     # === Create an overlay frame ===
@@ -187,6 +187,9 @@ def create_home_screen():
     global bg_frame, canvas, bg_image, logo_image, logo_label, title_label
     global start_button, exit_button, settings_image, settings_button
 
+    width = window.winfo_screenwidth()
+    height = window.winfo_screenheight()
+
     # Create background frame and canvas
     bg_frame = tk.Frame(window)
     bg_frame.pack(fill="both", expand=True)
@@ -197,17 +200,16 @@ def create_home_screen():
     # Load images
     bg_image = ImageTk.PhotoImage(
         Image.open("assets/utils/chessBackground.jpg").resize(
-            (window.winfo_screenwidth(), window.winfo_screenheight()))
+            (width, height))
     )
-    logo_image = ImageTk.PhotoImage(Image.open("assets/utils/chessLogo.png").resize((200, 200)))
+    logo_image = ImageTk.PhotoImage(Image.open("assets/utils/chessLogo.png").resize((int(width//7.7), int(width//7.7))))
 
     canvas.create_image(0, 0, image=bg_image, anchor=tk.NW)
 
     # Rounded rectangle background
-    screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
-    center_x = screen_width / 2
-    center_y = screen_height * 0.46
+
+    center_x = width / 2
+    center_y = height * 0.46
     rect_width = 320
     rect_height = 525
 
@@ -254,8 +256,8 @@ def create_home_screen():
     settings_button.place(relx=0.955)
 
     # Hexagon grid
-    hex_x = screen_width * 0.15
-    hex_y = screen_height * 0.45
+    hex_x = width * 0.15
+    hex_y = height * 0.45
     create_hexagon_grid(canvas, hex_x, hex_y, 60)
 
 def return_to_homescreen():
@@ -269,6 +271,52 @@ def return_to_homescreen():
 
 # ----------------- Start app -----------------
 
-create_home_screen()
+'''create_home_screen()
 
-window.mainloop()
+window.mainloop()'''
+
+
+def run_home_screen(parent_window=None):
+    """Run the home screen from an external module.
+    If parent_window is provided, it will be used instead of creating a new window."""
+    global window
+
+    if parent_window:
+        # Use the existing window from sign_in_page.py
+        window = parent_window
+
+        # Clear all widgets from the window
+        for widget in window.winfo_children():
+            widget.destroy()
+
+        # Configure window properties
+        window.title("Chess App")
+
+    else:
+        '''# Create a new window if none is provided (when running directly)
+        window = tk.Tk()
+        window.title("Chess App")
+        window.attributes('-fullscreen', True)
+        tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))'''
+        #TODO: check if needed
+        pass
+
+    tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
+    # Create the home screen UI
+    create_home_screen()
+    print((window.winfo_screenwidth(), window.winfo_screenheight()))
+    # Only start mainloop if we're running this module directly
+    if not parent_window:
+        window.mainloop()
+
+
+# Only run the app directly if this script is executed directly
+if __name__ == "__main__":
+    window = tk.Tk()
+    window.title("Chess App1")
+    window.attributes('-fullscreen', True)
+    tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
+    # Window is already created at the top of the file
+    create_home_screen()
+    print((window.winfo_screenwidth(), window.winfo_screenheight()))
+    window.mainloop()

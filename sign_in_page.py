@@ -7,18 +7,25 @@ from email.mime.multipart import MIMEMultipart
 import re
 from tkinter import messagebox
 from SQLL_database import UserDatabase
-import importlib
 import sys
 import os
+import tkinter as tk
 
 
-class SignInApp(ttk.Window):
-    def __init__(self):
-        super().__init__(themename="darkly")
-        self.title("Authentication")
+class SignInApp:
+    def __init__(self, root=None):
+        # Use existing root if provided, otherwise create a new one
+        if root:
+            self.root = root
+        else:
+            self.root = tk.Tk()
 
-        # Make the window fullscreen
-        self.attributes('-fullscreen', True)
+        # Apply ttkbootstrap theme
+        self.style = ttk.Style(theme="darkly")
+
+        # Set window title and make it fullscreen
+        self.root.title("Authentication")
+        self.root.attributes('-fullscreen', True)
 
         # Initialize database
         self.db = UserDatabase()
@@ -27,11 +34,11 @@ class SignInApp(ttk.Window):
         self.db.add_sample_user()
 
         # Get screen dimensions
-        self.screen_width = self.winfo_screenwidth()
-        self.screen_height = self.winfo_screenheight()
+        self.screen_width = self.root.winfo_screenwidth()
+        self.screen_height = self.root.winfo_screenheight()
 
         # Create main container with centered content
-        self.main_container = ttk.Frame(self)
+        self.main_container = ttk.Frame(self.root)
         self.main_container.pack(fill=BOTH, expand=True)
 
         # Create content frame to center the sign-in forms
@@ -66,7 +73,7 @@ class SignInApp(ttk.Window):
 
         # Add a close button for exiting fullscreen
         close_btn = ttk.Button(
-            self, text="×",
+            self.root, text="×",
             command=self.quit,
             bootstyle="danger",
             width=3
@@ -360,17 +367,17 @@ class SignInApp(ttk.Window):
 
     def load_home_screen(self, username):
         """Load the home screen module and transition to it"""
-        # Close the current window
-        self.destroy()
-
         # Add the current directory to sys.path if it's not already there
         current_dir = os.path.dirname(os.path.abspath(__file__))
         if current_dir not in sys.path:
             sys.path.append(current_dir)
 
-        # Import and run the home screen
+        # Import homeScreen_graphics
         try:
             import homeScreen_graphics
+            # Pass the current window to the home screen module
+            homeScreen_graphics.run_home_screen(self.root)
+
         except ImportError as e:
             messagebox.showerror("Error", f"Could not load home screen: {str(e)}")
 
@@ -607,8 +614,13 @@ class SignInApp(ttk.Window):
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return re.match(pattern, email) is not None
 
+    def quit(self):
+        """Quit the application"""
+        self.root.quit()
+
 
 # Run the application
 if __name__ == "__main__":
-    app = SignInApp()
-    app.mainloop()
+    root = tk.Tk()
+    app = SignInApp(root)
+    root.mainloop()
