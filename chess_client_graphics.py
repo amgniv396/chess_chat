@@ -25,6 +25,7 @@ game_state = {"selected": None, "current_player": chess.WHITE}
 chat_display = None  # Will be set in start_game()
 client_socket = None
 receive_thread = None
+chess_canvas = None  # Added global reference to the chess canvas
 
 
 # Client functions
@@ -48,7 +49,7 @@ def connect_to_server(username="Player1"):
 
 def receive_messages():
     """Continuously receive messages from the server"""
-    global chat_display
+    global chat_display, chess_canvas
 
     while True:
         try:
@@ -75,6 +76,28 @@ def receive_messages():
             break
 
 
+def process_opponent_move(move_text):
+    """Process an opponent's move from text representation"""
+    global board, game_state, chess_canvas
+
+    try:
+        # Convert text to chess.Move
+        move = chess.Move.from_uci(move_text)
+
+        # Apply the move to our board
+        if move in board.legal_moves:
+            # Execute the move
+            execute_move(move)
+
+            # Update the board display if it exists
+            if chess_canvas and chess_canvas.winfo_exists():
+                # We need to update the board from the main thread
+                chess_canvas.after(0, lambda: update_board(chess_canvas, board, game_state))
+
+    except Exception as e:
+        print(f"Error processing opponent move: {e}")
+
+
 def send_message(msg):
     """Send a message to the server"""
     try:
@@ -89,26 +112,6 @@ def stop_client():
     if client_socket:
         send_message("{quit}")
         client_socket.close()
-
-
-def process_opponent_move(move_text):
-    """Process an opponent's move from text representation"""
-    global board, game_state, chat_display
-
-    try:
-        # Convert text to chess.Move
-        move = chess.Move.from_uci(move_text)
-
-        # Apply the move to our board
-        if move in board.legal_moves:
-            board.push(move)
-            game_state["current_player"] = not game_state["current_player"]
-
-            # Update the board display if it exists
-            # This needs to be handled carefully since we're in a separate thread
-            # and need to update the UI from the main thread
-    except Exception as e:
-        print(f"Error processing opponent move: {e}")
 
 
 # Chess graphics functions
@@ -168,9 +171,8 @@ def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen
     if game_state["selected"]:
         move = chess.Move(game_state["selected"], square)
         if move in chess_board.legal_moves:
-            chess_board.push(move)
-            game_state["selected"] = None
-            game_state["current_player"] = not game_state["current_player"]
+            # Execute the move
+            execute_move(move)
 
             # Send the move to the opponent
             send_message(f"{{move}}{move}")
@@ -186,6 +188,18 @@ def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen
         game_state["selected"] = square
 
     update_board(canvas, chess_board, game_state)
+
+
+def execute_move(move):
+    """Execute a chess move and update the game state"""
+    global board, game_state
+
+    # Push the move to the board
+    board.push(move)
+
+    # Reset selection and change the current player
+    game_state["selected"] = None
+    game_state["current_player"] = not game_state["current_player"]
 
 
 def game_result(chess_board):
@@ -230,7 +244,7 @@ def update_board(canvas, chess_board, game_state):
 
 def start_game(window, return_to_homescreen):
     """Start a new chess game"""
-    global chat_display, board, game_state
+    global chat_display, board, game_state, chess_canvas
 
     # Reset the game state
     board = chess.Board()
