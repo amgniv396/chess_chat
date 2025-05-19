@@ -25,7 +25,9 @@ game_state = {
     "selected": None,
     "current_player": chess.WHITE,  # White always starts in chess
     "my_color": None,  # Will be set when paired (True for white, False for black)
-    "my_turn": False  # Will be set when paired based on color
+    "my_turn": False,  # Will be set when paired based on color
+    "promotion_ui_active": False,  # Flag to track when promotion UI is visible
+    "promotion_move": None,  # Store the potential promotion move
 }
 chat_display = None  # Will be set in start_game()
 status_label = None  # Will display turn status
@@ -228,8 +230,141 @@ def draw_pieces(canvas, fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq 
             i += 1
 
 
+def is_promotion_move(from_square, to_square, board_obj):
+    """Check if a move is a pawn promotion move"""
+    # Get the piece at the from square
+    piece = board_obj.piece_at(from_square)
+
+    # Check if it's a pawn
+    if piece and piece.piece_type == chess.PAWN:
+        # For white pawns (moving up the board)
+        if piece.color == chess.WHITE and chess.square_rank(to_square) == 7:
+            return True
+        # For black pawns (moving down the board)
+        elif piece.color == chess.BLACK and chess.square_rank(to_square) == 0:
+            return True
+
+    return False
+
+
+def show_promotion_ui(canvas, to_square, from_square, color, chess_board, game_state):
+    """Show the promotion piece selection UI"""
+    # Mark promotion UI as active
+    game_state["promotion_ui_active"] = True
+    game_state["promotion_move"] = (from_square, to_square)
+
+    # Position of the target square
+    rank = 7 - chess.square_rank(to_square)
+    file = chess.square_file(to_square)
+
+    # Create a semi-transparent overlay
+    canvas.create_rectangle(0, 0, BOARD_SIZE, BOARD_SIZE,
+                            fill="gray", stipple="gray50", tags="promotion_overlay")
+
+    # Determine pieces for promotion based on color
+    if color:  # White
+        promotion_pieces = ['q', 'r', 'b', 'n']  # Queen, Rook, Bishop, Knight
+    else:  # Black
+        promotion_pieces = ['Q', 'R', 'B', 'N']  # Uppercase for black pieces
+
+    # Create a background for the promotion UI
+    bg_width = SQUARE_SIZE
+    bg_height = SQUARE_SIZE * 4
+
+    # Position the UI either above or below the promotion square based on color
+    if color:  # White (moving upward)
+        start_y = max(0, rank * SQUARE_SIZE - bg_height)
+    else:  # Black (moving downward)
+        start_y = min(BOARD_SIZE - bg_height, (rank + 1) * SQUARE_SIZE)
+
+    canvas.create_rectangle(
+        file * SQUARE_SIZE, start_y,
+        (file + 1) * SQUARE_SIZE, start_y + bg_height,
+        fill="#222222", outline="#555555", width=2,
+        tags="promotion_ui"
+    )
+
+    # Draw the promotion piece options
+    for i, piece in enumerate(promotion_pieces):
+        # Draw box for each piece
+        piece_y = start_y + i * SQUARE_SIZE
+        canvas.create_rectangle(
+            file * SQUARE_SIZE, piece_y,
+            (file + 1) * SQUARE_SIZE, piece_y + SQUARE_SIZE,
+            fill="#333333", outline="#666666",
+            tags=f"promotion_option_{piece}"
+        )
+
+        # Draw piece image
+        canvas.create_image(
+            file * SQUARE_SIZE + PIECE_SIZE_TO_SQUARE / 2,
+            piece_y + PIECE_SIZE_TO_SQUARE / 2,
+            anchor="nw", image=piece_images[piece],
+            tags=f"promotion_option_{piece}"
+        )
+
+        # Bind click handler to each piece option
+        canvas.tag_bind(f"promotion_option_{piece}", "<Button-1>",
+                        lambda event, p=piece: handle_promotion_selection(p, canvas, chess_board, game_state))
+
+
+def handle_promotion_selection(piece, canvas, chess_board, game_state):
+    """Handle the selection of a promotion piece"""
+    # Clear the promotion UI
+    canvas.delete("promotion_ui")
+    canvas.delete("promotion_overlay")
+
+    # Get stored move details
+    from_square, to_square = game_state["promotion_move"]
+
+    # Create the promotion move with the selected piece
+    # Map the FEN piece character to chess.py piece type constants
+    piece_type_map = {
+        'q': chess.QUEEN, 'r': chess.ROOK, 'b': chess.BISHOP, 'n': chess.KNIGHT,
+        'Q': chess.QUEEN, 'R': chess.ROOK, 'B': chess.BISHOP, 'N': chess.KNIGHT
+    }
+
+    promotion_piece = piece_type_map[piece]
+    move = chess.Move(from_square, to_square, promotion=promotion_piece)
+
+    # Execute the move if legal
+    if move in chess_board.legal_moves:
+        # Push the move to our local board
+        chess_board.push(move)
+
+        # Update game state
+        game_state["selected"] = None
+        game_state["current_player"] = not game_state["current_player"]
+        game_state["my_turn"] = False  # It's opponent's turn now
+        game_state["promotion_ui_active"] = False
+        game_state["promotion_move"] = None
+
+        # Update status label
+        if status_label and status_label.winfo_exists():
+            status_label.config(text="Opponent's turn")
+
+        # Send the move to the opponent
+        send_message(f"{{move}}{move}")
+
+        # Check for game over
+        if chess_board.is_game_over():
+            print("Game over!")
+            return_to_homescreen = canvas.master.return_to_homescreen if hasattr(canvas.master,
+                                                                                 "return_to_homescreen") else None
+            if return_to_homescreen:
+                canvas.after(2000,
+                             lambda: show_game_over_screen(canvas, game_result(chess_board), return_to_homescreen))
+
+    # Update the board display
+    update_board(canvas, chess_board, game_state)
+
+
 def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen):
     """Handle click events on the chess board"""
+    # If promotion UI is active, ignore board clicks outside promotion UI
+    if game_state["promotion_ui_active"]:
+        return
+
     # Check if my color is assigned yet
     if game_state["my_color"] is None:
         if chat_display and chat_display.winfo_exists():
@@ -241,7 +376,6 @@ def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen
 
     # Check if it's my turn
     if not game_state["my_turn"]:
-        #TODO: change
         if chat_display and chat_display.winfo_exists():
             chat_display.configure(state="normal")
             chat_display.insert(tk.END, "System: It's not your turn yet.\n")
@@ -259,6 +393,13 @@ def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen
     piece = chess_board.piece_at(square)
 
     if game_state["selected"]:
+        # Check if this is a pawn promotion move
+        if is_promotion_move(game_state["selected"], square, chess_board):
+            # Show promotion piece selection UI
+            show_promotion_ui(canvas, square, game_state["selected"], game_state["my_color"], chess_board, game_state)
+            return
+
+        # Regular move
         move = chess.Move(game_state["selected"], square)
         if move in chess_board.legal_moves:
             # Execute the move
@@ -372,7 +513,9 @@ def start_game(window, return_to_homescreen):
         "selected": None,
         "current_player": chess.WHITE,
         "my_color": None,  # Will be set when paired
-        "my_turn": False  # Will be set when paired based on color
+        "my_turn": False,  # Will be set when paired based on color
+        "promotion_ui_active": False,
+        "promotion_move": None
     }
 
     # Notify server that we're entering a game
@@ -403,6 +546,9 @@ def start_game(window, return_to_homescreen):
     # === Create Chess Canvas ===
     chess_canvas = tk.Canvas(canvas, width=BOARD_SIZE, height=BOARD_SIZE, bd=5, relief="ridge")
     chess_canvas.place(relx=0.5, rely=0.5, anchor="center")
+
+    # Store reference to return_to_homescreen for use in other functions
+    chess_canvas.master.return_to_homescreen = return_to_homescreen
 
     # Add status label
     status_label = tk.Label(canvas, text="Waiting for game to start...",
