@@ -21,8 +21,14 @@ ADDR = (HOST, PORT)
 # Global variables
 piece_images = {}
 board = chess.Board()
-game_state = {"selected": None, "current_player": chess.WHITE}
+game_state = {
+    "selected": None,
+    "current_player": chess.WHITE,  # White always starts in chess
+    "my_color": None,  # Will be set when paired (True for white, False for black)
+    "my_turn": False  # Will be set when paired based on color
+}
 chat_display = None  # Will be set in start_game()
+status_label = None  # Will display turn status
 client_socket = None
 receive_thread = None
 chess_canvas = None  # Added global reference to the chess canvas
@@ -49,7 +55,7 @@ def connect_to_server(username="Player1"):
 
 def receive_messages():
     """Continuously receive messages from the server"""
-    global chat_display, chess_canvas
+    global chat_display, chess_canvas, game_state, status_label
 
     while True:
         try:
@@ -59,17 +65,69 @@ def receive_messages():
 
             print(f"Server: {msg}")
 
-            # Check if chat_display exists and update it
-            if chat_display and chat_display.winfo_exists():
-                chat_display.configure(state="normal")
-                chat_display.insert(tk.END, f"Opponent: {msg}\n")
-                chat_display.configure(state="disabled")
-                chat_display.see(tk.END)
+            # Handle info messages
+            if msg.startswith("{info}"):
+                info_msg = msg[6:]  # Remove {info} prefix
+                if chat_display and chat_display.winfo_exists():
+                    chat_display.configure(state="normal")
+                    chat_display.insert(tk.END, f"System: {info_msg}\n")
+                    chat_display.configure(state="disabled")
+                    chat_display.see(tk.END)
+
+                # Check if the message contains color assignment
+                if "You are playing as white" in info_msg:
+                    game_state["my_color"] = True  # White
+                    # Update status if this is the first player
+                    if status_label and status_label.winfo_exists():
+                        status_label.config(text="Waiting for opponent...")
+                elif "You are playing as black" in info_msg:
+                    game_state["my_color"] = False  # Black
+                    # Update status if this is the second player
+                    if status_label and status_label.winfo_exists():
+                        status_label.config(text="Waiting for opponent...")
+
+            # Handle turn notifications
+            elif msg.startswith("{turn}"):
+                turn_msg = msg[6:]  # Remove {turn} prefix
+                if chat_display and chat_display.winfo_exists():
+                    chat_display.configure(state="normal")
+                    chat_display.insert(tk.END, f"System: {turn_msg}\n")
+                    chat_display.configure(state="disabled")
+                    chat_display.see(tk.END)
+
+                # Update turn status
+                game_state["my_turn"] = "Your turn" in turn_msg
+
+                # Update status label if it exists
+                if status_label and status_label.winfo_exists():
+                    status_text = "Your turn" if game_state["my_turn"] else "Opponent's turn"
+                    status_label.config(text=status_text)
+
+                # Force update the board to reflect turn status visually
+                if chess_canvas and chess_canvas.winfo_exists():
+                    chess_canvas.after(0, lambda: update_board(chess_canvas, board, game_state))
+
+            # Handle error messages
+            elif msg.startswith("{error}"):
+                error_msg = msg[7:]  # Remove {error} prefix
+                if chat_display and chat_display.winfo_exists():
+                    chat_display.configure(state="normal")
+                    chat_display.insert(tk.END, f"Error: {error_msg}\n")
+                    chat_display.configure(state="disabled")
+                    chat_display.see(tk.END)
 
             # Check if the message is a move
-            if msg.startswith("{move}"):
+            elif msg.startswith("{move}"):
                 move_text = msg[6:]  # Remove {move} prefix
                 process_opponent_move(move_text)
+
+            # Handle regular chat messages
+            else:
+                if chat_display and chat_display.winfo_exists():
+                    chat_display.configure(state="normal")
+                    chat_display.insert(tk.END, f"Opponent: {msg}\n")
+                    chat_display.configure(state="disabled")
+                    chat_display.see(tk.END)
 
         except (ConnectionResetError, ConnectionAbortedError, OSError):
             print("Connection lost.")
@@ -87,12 +145,21 @@ def process_opponent_move(move_text):
         # Apply the move to our board
         if move in board.legal_moves:
             # Execute the move
-            execute_move(move)
+            board.push(move)
+
+            # Update game state
+            game_state["selected"] = None
+            game_state["current_player"] = not game_state["current_player"]
+            game_state["my_turn"] = True  # It's now our turn
 
             # Update the board display if it exists
             if chess_canvas and chess_canvas.winfo_exists():
                 # We need to update the board from the main thread
                 chess_canvas.after(0, lambda: update_board(chess_canvas, board, game_state))
+
+            # Update status label if it exists
+            if status_label and status_label.winfo_exists():
+                status_label.config(text="Your turn")
 
     except Exception as e:
         print(f"Error processing opponent move: {e}")
@@ -163,6 +230,28 @@ def draw_pieces(canvas, fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq 
 
 def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen):
     """Handle click events on the chess board"""
+    # Check if my color is assigned yet
+    if game_state["my_color"] is None:
+        if chat_display and chat_display.winfo_exists():
+            chat_display.configure(state="normal")
+            chat_display.insert(tk.END, "System: Waiting to be paired with an opponent.\n")
+            chat_display.configure(state="disabled")
+            chat_display.see(tk.END)
+        return
+
+    # Check if it's my turn
+    if not game_state["my_turn"]:
+        if chat_display and chat_display.winfo_exists():
+            chat_display.configure(state="normal")
+            chat_display.insert(tk.END, "System: It's not your turn yet.\n")
+            chat_display.configure(state="disabled")
+            chat_display.see(tk.END)
+        return
+
+    # Check if the current player color matches my color (redundant check but keeping for clarity)
+    if game_state["current_player"] != game_state["my_color"]:
+        return
+
     row = event.y // SQUARE_SIZE
     col = event.x // SQUARE_SIZE
     square = chess.square(col, 7 - row)
@@ -172,7 +261,16 @@ def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen
         move = chess.Move(game_state["selected"], square)
         if move in chess_board.legal_moves:
             # Execute the move
-            execute_move(move)
+            chess_board.push(move)
+
+            # Update game state
+            game_state["selected"] = None
+            game_state["current_player"] = not game_state["current_player"]
+            game_state["my_turn"] = False  # It's now opponent's turn
+
+            # Update status label
+            if status_label and status_label.winfo_exists():
+                status_label.config(text="Opponent's turn")
 
             # Send the move to the opponent
             send_message(f"{{move}}{move}")
@@ -183,8 +281,12 @@ def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen
                 canvas.after(2000,
                              lambda: show_game_over_screen(canvas, game_result(chess_board), return_to_homescreen))
         else:
-            game_state["selected"] = square
-    elif piece and piece.color == game_state["current_player"]:
+            # If the move is invalid, but they clicked on their own piece, select that piece instead
+            if piece and piece.color == game_state["my_color"]:
+                game_state["selected"] = square
+            else:
+                game_state["selected"] = None
+    elif piece and piece.color == game_state["my_color"]:
         game_state["selected"] = square
 
     update_board(canvas, chess_board, game_state)
@@ -220,6 +322,19 @@ def update_board(canvas, chess_board, game_state):
     draw_board(canvas)
     draw_pieces(canvas, chess_board.fen())
 
+    # Add visual indicators for the current game state
+    # If the game hasn't started yet (no color assigned)
+    if game_state["my_color"] is None:
+        # Display a "waiting" message on the board
+        x_center = BOARD_SIZE / 2
+        y_center = BOARD_SIZE / 2
+        canvas.create_rectangle(x_center - 150, y_center - 30,
+                                x_center + 150, y_center + 30,
+                                fill="#333333", outline="#666666", width=2)
+        canvas.create_text(x_center, y_center, text="Waiting for opponent...",
+                           font=("Arial", 16), fill="white")
+        return
+
     # Highlight selected square
     if game_state["selected"]:
         row = 7 - chess.square_rank(game_state["selected"])
@@ -241,14 +356,31 @@ def update_board(canvas, chess_board, game_state):
                 canvas.create_oval(x1 + CIRCLE_CONST, y1 + CIRCLE_CONST, x2 - CIRCLE_CONST, y2 - CIRCLE_CONST,
                                    fill="gray")
 
+    # Add visual indicator for whose turn it is
+    x_center = BOARD_SIZE / 2
+    y_position = BOARD_SIZE - 15
+    if game_state["my_turn"]:
+        canvas.create_text(x_center, y_position,
+                           text="YOUR TURN", font=("Arial", 12, "bold"),
+                           fill="green")
+    else:
+        canvas.create_text(x_center, y_position,
+                           text="OPPONENT'S TURN", font=("Arial", 12, "bold"),
+                           fill="red")
+
 
 def start_game(window, return_to_homescreen):
     """Start a new chess game"""
-    global chat_display, board, game_state, chess_canvas
+    global chat_display, board, game_state, chess_canvas, status_label
 
     # Reset the game state
     board = chess.Board()
-    game_state = {"selected": None, "current_player": chess.WHITE}
+    game_state = {
+        "selected": None,
+        "current_player": chess.WHITE,
+        "my_color": None,  # Will be set when paired
+        "my_turn": False  # Will be set when paired based on color
+    }
 
     # Notify server that we're entering a game
     send_message("{enter_game}")
@@ -279,6 +411,13 @@ def start_game(window, return_to_homescreen):
     chess_canvas = tk.Canvas(canvas, width=BOARD_SIZE, height=BOARD_SIZE, bd=5, relief="ridge")
     chess_canvas.place(relx=0.5, rely=0.5, anchor="center")
 
+    # Add status label
+    status_label = tk.Label(canvas, text="Waiting for game to start...",
+                            font=("Arial", 14), bg="white", relief="ridge", padx=10, pady=5)
+    canvas.create_window(window.winfo_screenwidth() / 2,
+                         window.winfo_screenheight() / 2 - BOARD_SIZE / 2 - 30,
+                         window=status_label)
+
     # Load images and draw board
     load_images()
 
@@ -291,7 +430,7 @@ def start_game(window, return_to_homescreen):
 
     # === Create Buttons (Draw, Resign) ===
     draw_button = tk.Button(canvas, text="Offer Draw", width=15)
-    resign_button = tk.Button(canvas, text="Resign", width=15, command=return_to_homescreen)
+    resign_button = tk.Button(canvas, text="Resign", width=15, command=lambda: resign_game(return_to_homescreen))
 
     canvas.create_window(window.winfo_screenwidth() / 2 + 100, window.winfo_screenheight() / 2 + BOARD_SIZE / 2 + 25,
                          window=draw_button)
@@ -326,6 +465,12 @@ def start_game(window, return_to_homescreen):
             chat_entry.delete(0, tk.END)
 
     chat_entry.bind("<Return>", send_chat_message)
+
+
+def resign_game(return_to_homescreen):
+    """Resign the current game"""
+    send_message("{quit_game}")
+    return_to_homescreen()
 
 
 def show_game_over_screen(canvas, result_text, return_to_homescreen):

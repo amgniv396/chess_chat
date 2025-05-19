@@ -1,10 +1,15 @@
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
+import random
 
 connected_clients = []  # All connected clients
-waiting_clients = []    # Clients who have sent {enter_game}
-pairs = {}              # client -> partner
+waiting_clients = []  # Clients who have sent {enter_game}
+pairs = {}  # client -> partner
 addresses = {}
+
+# New dictionaries for turn management
+turns = {}  # client -> is_their_turn (bool)
+colors = {}  # client -> color (True for white, False for black)
 
 HOST = ''
 PORT = 33000
@@ -25,14 +30,44 @@ def accept_incoming_connections():
 
 
 def try_pairing():
-    """Try to pair two waiting clients."""
+    """Try to pair two waiting clients and decide who starts first."""
     while len(waiting_clients) >= 2:
         player1 = waiting_clients.pop(0)
         player2 = waiting_clients.pop(0)
+
+        # Randomly decide which player gets white (and thus goes first)
+        player1_is_white = random.choice([True, False])
+
+        # Set up the pairing
         pairs[player1] = player2
         pairs[player2] = player1
-        player1.send(bytes("{info}You are now paired.", "utf8"))
-        player2.send(bytes("{info}You are now paired.", "utf8"))
+
+        # Assign colors
+        colors[player1] = player1_is_white
+        colors[player2] = not player1_is_white
+
+        # Set initial turns (white always goes first)
+        turns[player1] = player1_is_white
+        turns[player2] = not player1_is_white
+
+        # Notify both players of their color and turn status
+        player1_color = "white" if player1_is_white else "black"
+        player2_color = "black" if player1_is_white else "white"
+
+        player1.send(bytes(f"{{info}}You are now paired. You are playing as {player1_color}.", "utf8"))
+        player2.send(bytes(f"{{info}}You are now paired. You are playing as {player2_color}.", "utf8"))
+
+        # Add a small delay to ensure color messages are processed first
+        from time import sleep
+        sleep(0.1)
+
+        # Let players know whose turn it is
+        if player1_is_white:
+            player1.send(bytes("{turn}Your turn to move.", "utf8"))
+            player2.send(bytes("{turn}Opponent's turn to move.", "utf8"))
+        else:
+            player1.send(bytes("{turn}Opponent's turn to move.", "utf8"))
+            player2.send(bytes("{turn}Your turn to move.", "utf8"))
 
 
 def unpair(client, notify_partner=True):
@@ -40,15 +75,17 @@ def unpair(client, notify_partner=True):
     partner = pairs.pop(client, None)
     if partner:
         pairs.pop(partner, None)
+        # Also clean up the turns and colors data
+        turns.pop(client, None)
+        turns.pop(partner, None)
+        colors.pop(client, None)
+        colors.pop(partner, None)
+
         if notify_partner:
             try:
                 partner.send(bytes("{info}Your partner has left the game.", "utf8"))
             except:
                 pass
-            '''# Move the partner back to the waiting list
-            if partner not in waiting_clients:
-                waiting_clients.append(partner)
-            try_pairing()'''
 
 
 def handle_client(client):
@@ -82,7 +119,31 @@ def handle_client(client):
                 client.send(bytes("{quit}", "utf8"))
                 break
 
+            elif data.startswith("{move}"):
+                partner = pairs.get(client)
+                if not partner:
+                    client.send(bytes("{error}No partner to send to.", "utf8"))
+                    continue
+
+                # Check if it's this client's turn
+                if not turns.get(client, False):
+                    client.send(bytes("{error}Not your turn to move.", "utf8"))
+                    continue
+
+                # If it is their turn, process the move
+                # Switch turns
+                turns[client] = False
+                turns[partner] = True
+
+                # Forward the move to the partner
+                partner.send(bytes(data, "utf8"))
+
+                # Notify both players of the turn change
+                client.send(bytes("{turn}Opponent's turn to move.", "utf8"))
+                partner.send(bytes("{turn}Your turn to move.", "utf8"))
+
             else:
+                # Handle regular chat messages
                 partner = pairs.get(client)
                 if partner:
                     partner.send(bytes(data, "utf8"))
@@ -101,8 +162,6 @@ def handle_client(client):
     if client in connected_clients:
         connected_clients.remove(client)
     client.close()
-
-
 
 
 if __name__ == "__main__":
