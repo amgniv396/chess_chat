@@ -1,5 +1,4 @@
 import tkinter as tk
-import ttkbootstrap as ttk
 from PIL import Image, ImageTk
 import chess
 from socket import AF_INET, socket, SOCK_STREAM
@@ -35,6 +34,166 @@ client_socket = None
 receive_thread = None
 chess_canvas = None  # Added global reference to the chess canvas
 
+draw_offer_popup = None
+draw_offered_by_me = False
+draw_offered_by_opponent = False
+
+
+def offer_draw():
+    """Send draw offer to opponent"""
+    global draw_offered_by_me
+
+    if draw_offered_by_me:
+        show_info_popup("You already offered a draw!", "orange")
+        return
+
+    draw_offered_by_me = True
+    send_message("{draw_offer}")
+    show_info_popup("Draw offer sent to opponent", "green")
+
+
+def show_info_popup(message, color="blue"):
+    """Show an informational popup on the right side of the chess board"""
+    global draw_offer_popup
+
+    if draw_offer_popup:
+        try:
+            draw_offer_popup.destroy()
+        except:
+            pass
+
+    # Get the main canvas (parent of chess_canvas)
+    main_canvas = None
+    current_widget = chess_canvas.master
+    while current_widget:
+        if isinstance(current_widget, tk.Canvas) and current_widget != chess_canvas:
+            main_canvas = current_widget
+            break
+        current_widget = current_widget.master
+
+    if not main_canvas:
+        return
+
+    # Create popup frame
+    popup_frame = tk.Frame(main_canvas, bg="white", bd=3, relief="ridge")
+
+    # Calculate position (right side of chess board)
+    # Get chess board position on main canvas
+    chess_x = main_canvas.winfo_screenwidth() // 2 + BOARD_SIZE // 2 + 50
+    chess_y = main_canvas.winfo_screenheight() // 2
+    main_canvas.create_window(chess_x, chess_y, window=popup_frame, anchor="w")
+
+    # Message label with colored background
+    message_label = tk.Label(popup_frame, text=message, font=("Arial", 12, "bold"),
+                             bg=color, fg="white", padx=15, pady=10)
+    message_label.pack()
+
+    draw_offer_popup = popup_frame
+
+    # Auto-hide after 3 seconds
+    main_canvas.after(3000, lambda: hide_popup())
+
+
+def show_draw_offer_popup():
+    """Show draw offer popup with accept/decline options"""
+    global draw_offer_popup
+
+    if draw_offer_popup:
+        try:
+            draw_offer_popup.destroy()
+        except:
+            pass
+
+    # Get the main canvas (parent of chess_canvas)
+    main_canvas = None
+    current_widget = chess_canvas.master
+    while current_widget:
+        if isinstance(current_widget, tk.Canvas) and current_widget != chess_canvas:
+            main_canvas = current_widget
+            break
+        current_widget = current_widget.master
+
+    if not main_canvas:
+        return
+
+    # Create popup frame
+    popup_frame = tk.Frame(main_canvas, bg="#2c3e50", bd=3, relief="ridge")
+
+    # Calculate position (right side of chess board)
+    chess_x = main_canvas.winfo_screenwidth() // 2 + BOARD_SIZE // 2 + 50
+    chess_y = main_canvas.winfo_screenheight() // 2
+
+    main_canvas.create_window(chess_x, chess_y, window=popup_frame, anchor="w")
+
+    # Title
+    title_label = tk.Label(popup_frame, text="Draw Offer", font=("Arial", 14, "bold"),
+                           bg="#2c3e50", fg="white")
+    title_label.pack(pady=(10, 5))
+
+    # Message
+    message_label = tk.Label(popup_frame, text="Opponent offers a draw", font=("Arial", 11),
+                             bg="#2c3e50", fg="white")
+    message_label.pack(pady=(0, 10))
+
+    # Buttons frame
+    buttons_frame = tk.Frame(popup_frame, bg="#2c3e50")
+    buttons_frame.pack(pady=(0, 10))
+
+    # Accept button
+    accept_btn = tk.Button(buttons_frame, text="Accept", font=("Arial", 10, "bold"),
+                           bg="#27ae60", fg="white", padx=15, pady=5,
+                           command=accept_draw)
+    accept_btn.pack(side="left", padx=(10, 5))
+
+    # Decline button
+    decline_btn = tk.Button(buttons_frame, text="Decline", font=("Arial", 10, "bold"),
+                            bg="#e74c3c", fg="white", padx=15, pady=5,
+                            command=decline_draw)
+    decline_btn.pack(side="right", padx=(5, 10))
+
+    draw_offer_popup = popup_frame
+
+
+def accept_draw():
+    """Accept the draw offer"""
+    global draw_offered_by_opponent
+    hide_popup()
+    send_message("{draw_accept}")
+
+    # End the game as a draw
+    end_game_as_draw()
+
+
+def decline_draw():
+    """Decline the draw offer"""
+    global draw_offered_by_opponent
+
+    hide_popup()
+    draw_offered_by_opponent = False
+    send_message("{draw_decline}")
+    show_info_popup("Draw offer declined", "red")
+
+
+def hide_popup():
+    """Hide the current popup"""
+    global draw_offer_popup
+
+    if draw_offer_popup:
+        try:
+            draw_offer_popup.destroy()
+        except:
+            pass
+        draw_offer_popup = None
+
+
+def end_game_as_draw():
+    """End the game as a draw"""
+    return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
+                                                                               "return_to_homescreen") else None
+    if return_to_homescreen:
+        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, "Game drawn by agreement!",
+                                                               return_to_homescreen))
+
 
 # Client functions
 def connect_to_server(username="Player1"):
@@ -57,7 +216,7 @@ def connect_to_server(username="Player1"):
 
 def receive_messages():
     """Continuously receive messages from the server"""
-    global chat_display, chess_canvas, game_state, status_label
+    global chat_display, chess_canvas, game_state, status_label,draw_offered_by_me
 
     while True:
         try:
@@ -122,8 +281,18 @@ def receive_messages():
             elif msg.startswith("{move}"):
                 move_text = msg[6:]  # Remove {move} prefix
                 process_opponent_move(move_text)
-
-            # Handle regular chat messages
+            elif msg.startswith("{draw_offer}"):
+                draw_offered_by_opponent = True
+                show_draw_offer_popup()
+            elif msg.startswith("{draw_accept}"):
+                draw_offered_by_me = False
+                hide_popup()
+                show_info_popup("Draw accepted!", "green")
+                end_game_as_draw()
+            elif msg.startswith("{draw_decline}"):
+                draw_offered_by_me = False
+                hide_popup()
+                show_info_popup("Draw offer declined", "red")
             else:
                 if chat_display and chat_display.winfo_exists():
                     chat_display.configure(state="normal")
@@ -568,7 +737,7 @@ def start_game(window, return_to_homescreen):
                       lambda event: on_square_click(event, chess_canvas, board, game_state, return_to_homescreen))
 
     # === Create Buttons (Draw, Resign) ===
-    draw_button = tk.Button(canvas, text="Offer Draw", width=15)
+    draw_button = tk.Button(canvas, text="Offer Draw", width=15, command=offer_draw)
     resign_button = tk.Button(canvas, text="Resign", width=15, command=lambda: resign_game(return_to_homescreen))
 
     canvas.create_window(window.winfo_screenwidth() / 2 + 100, window.winfo_screenheight() / 2 + BOARD_SIZE / 2 + 25,
@@ -603,6 +772,7 @@ def start_game(window, return_to_homescreen):
 
             chat_entry.delete(0, tk.END)
 
+    show_info_popup("Draw offer sent to opponent", "green")
     chat_entry.bind("<Return>", send_chat_message)
 
 
