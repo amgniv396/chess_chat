@@ -38,6 +38,103 @@ draw_offer_popup = None
 draw_offered_by_me = False
 draw_offered_by_opponent = False
 
+white_time = 300  # 5 minutes in seconds
+black_time = 300  # 5 minutes in seconds
+clock_running = False
+clock_labels = {"white": None, "black": None}
+clock_frame = None
+
+
+def format_time(seconds):
+    """Format time in MM:SS format"""
+    minutes = seconds // 60
+    seconds = seconds % 60
+    return f"{minutes:02d}:{seconds:02d}"
+
+
+def update_clock():
+    """Update the chess clock every second"""
+    global white_time, black_time, clock_running, game_state, chess_canvas
+
+    if not clock_running:
+        return
+
+    # Determine whose time to decrease based on whose turn it is
+    if game_state["current_player"] == chess.WHITE:
+        white_time -= 1
+        if white_time <= 0:
+            white_time = 0
+            clock_running = False
+            end_game_by_timeout("Black wins by timeout!")
+            return
+    else:
+        black_time -= 1
+        if black_time <= 0:
+            black_time = 0
+            clock_running = False
+            end_game_by_timeout("White wins by timeout!")
+            return
+
+    # Update clock display
+    update_clock_display()
+
+    # Schedule next update
+    if chess_canvas and chess_canvas.winfo_exists():
+        chess_canvas.after(1000, update_clock)
+
+
+def update_clock_display():
+    """Update the visual clock display"""
+    global clock_labels, white_time, black_time, game_state
+
+    if clock_labels["white"] and clock_labels["white"].winfo_exists():
+        white_text = f"White: {format_time(white_time)}"
+        if game_state["current_player"] == chess.WHITE and clock_running:
+            white_text += " ⏰"  # Add clock icon for active player
+        clock_labels["white"].config(text=white_text)
+
+    if clock_labels["black"] and clock_labels["black"].winfo_exists():
+        black_text = f"Black: {format_time(black_time)}"
+        if game_state["current_player"] == chess.BLACK and clock_running:
+            black_text += " ⏰"  # Add clock icon for active player
+        clock_labels["black"].config(text=black_text)
+
+
+def start_clock():
+    """Start the chess clock"""
+    global clock_running
+    clock_running = True
+    update_clock()
+
+
+def stop_clock():
+    """Stop the chess clock"""
+    global clock_running
+    clock_running = False
+
+
+def reset_clock():
+    """Reset both clocks to 5 minutes"""
+    global white_time, black_time, clock_running
+    white_time = 300
+    black_time = 300
+    clock_running = False
+    update_clock_display()
+
+
+def end_game_by_timeout(result_text):
+    """End the game due to timeout"""
+    global chess_canvas
+    stop_clock()
+
+    # Send timeout message to opponent
+    send_message("{timeout}")
+
+    return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
+                                                                               "return_to_homescreen") else None
+    if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
+        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, result_text, return_to_homescreen))
+
 
 def offer_draw():
     """Send draw offer to opponent"""
@@ -187,6 +284,7 @@ def hide_popup():
 
 
 def end_game_as_draw():
+    stop_clock()
     """End the game as a draw"""
     return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
                                                                                "return_to_homescreen") else None
@@ -268,6 +366,7 @@ def receive_messages():
                 if chess_canvas and chess_canvas.winfo_exists():
                     chess_canvas.after(0, lambda: update_board(chess_canvas, board, game_state))
 
+
             # Handle error messages
             elif msg.startswith("{error}"):
                 error_msg = msg[7:]  # Remove {error} prefix
@@ -293,6 +392,21 @@ def receive_messages():
                 draw_offered_by_me = False
                 hide_popup()
                 show_info_popup("Draw offer declined", "red")
+            elif msg.startswith("{timeout}"):
+                stop_clock()
+                # Determine who won based on remaining time
+                if white_time <= 0:
+                    result_text = "Black wins by timeout!"
+                elif black_time <= 0:
+                    result_text = "White wins by timeout!"
+                else:
+                    result_text = "Game ended by timeout!"
+
+                return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
+                                                                                           "return_to_homescreen") else None
+                if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
+                    chess_canvas.after(1000,
+                                       lambda: show_game_over_screen(chess_canvas, result_text, return_to_homescreen))
             else:
                 if chat_display and chat_display.winfo_exists():
                     chat_display.configure(state="normal")
@@ -322,6 +436,13 @@ def process_opponent_move(move_text):
             game_state["selected"] = None
             game_state["current_player"] = not game_state["current_player"]
             game_state["my_turn"] = True  # It's now our turn
+
+            # Start clock on first move if not already running (for opponent's first move)
+            if not clock_running:
+                start_clock()
+
+            # Update clock display after opponent move
+            update_clock_display()
 
             # Update the board display if it exists
             if chess_canvas and chess_canvas.winfo_exists():
@@ -613,6 +734,12 @@ def execute_move(move):
     # Reset selection and change the current player
     game_state["selected"] = None
     game_state["current_player"] = not game_state["current_player"]
+    # Start clock on first move if not already running
+    if not clock_running:
+        start_clock()
+
+    # Update clock display after move
+    update_clock_display()
 
 
 def game_result(chess_board):
@@ -759,6 +886,28 @@ def start_game(window, return_to_homescreen):
     chat_entry = tk.Entry(chat_frame, width=30)
     chat_entry.grid(row=1, column=0, padx=5, pady=5)
 
+    global clock_frame, clock_labels
+    clock_frame = tk.Frame(canvas, bg="white", bd=3, relief="ridge")
+    canvas.create_window(window.winfo_screenwidth() / 2 - BOARD_SIZE / 2 - 150,
+                         window.winfo_screenheight() / 2 - 200, window=clock_frame)
+
+    # Clock title
+    clock_title = tk.Label(clock_frame, text="Game Clock", font=("Arial", 12, "bold"), bg="white")
+    clock_title.grid(row=0, column=0, columnspan=2, pady=5)
+
+    # White clock
+    clock_labels["white"] = tk.Label(clock_frame, text=f"White: {format_time(white_time)}",
+                                     font=("Arial", 11, "bold"), bg="white", fg="black")
+    clock_labels["white"].grid(row=1, column=0, padx=5, pady=2, sticky="w")
+
+    # Black clock
+    clock_labels["black"] = tk.Label(clock_frame, text=f"Black: {format_time(black_time)}",
+                                     font=("Arial", 11, "bold"), bg="white", fg="black")
+    clock_labels["black"].grid(row=2, column=0, padx=5, pady=2, sticky="w")
+
+    # Reset clocks when starting a new game
+    reset_clock()
+
     def send_chat_message(event=None):
         message = chat_entry.get()
         if message.strip() != "":
@@ -777,12 +926,14 @@ def start_game(window, return_to_homescreen):
 
 
 def resign_game(return_to_homescreen):
+    stop_clock()
     """Resign the current game"""
     send_message("{quit_game}")
     return_to_homescreen()
 
 
 def show_game_over_screen(canvas, result_text, return_to_homescreen):
+    stop_clock()
     """Display game over screen with result"""
     # Center of the canvas
     center_x = canvas.winfo_width() / 2
