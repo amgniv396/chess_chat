@@ -421,7 +421,26 @@ def receive_messages():
                     chat_display.insert(tk.END, "System: Game clock started!\n")
                     chat_display.configure(state="disabled")
                     chat_display.see(tk.END)
+            elif msg.startswith("{opponent_resigned}"):
+                stop_clock()
+                # Opponent resigned, so we win
+                if game_state["my_color"] == True:  # We are white
+                    result_text = "White wins! Opponent resigned."
+                else:  # We are black
+                    result_text = "Black wins! Opponent resigned."
 
+                # Show message in chat
+                if chat_display and chat_display.winfo_exists():
+                    chat_display.configure(state="normal")
+                    chat_display.insert(tk.END, "System: Opponent has resigned!\n")
+                    chat_display.configure(state="disabled")
+                    chat_display.see(tk.END)
+
+                return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
+                                                                                           "return_to_homescreen") else None
+                if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
+                    chess_canvas.after(1000,
+                                       lambda: show_game_over_screen(chess_canvas, result_text, return_to_homescreen))
             else:
                 if chat_display and chat_display.winfo_exists():
                     chat_display.configure(state="normal")
@@ -926,14 +945,13 @@ def start_game(window, return_to_homescreen):
 
             chat_entry.delete(0, tk.END)
 
-    show_info_popup("Draw offer sent to opponent", "green")
     chat_entry.bind("<Return>", send_chat_message)
 
 
 def resign_game(return_to_homescreen):
     """Resign the current game"""
     stop_clock()
-    send_message("{quit_game}")
+    send_message("{opponent_resigned}")
     return_to_homescreen()
 
 
