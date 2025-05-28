@@ -441,6 +441,17 @@ def receive_messages():
                 if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
                     chess_canvas.after(1000,
                                        lambda: show_game_over_screen(chess_canvas, result_text, return_to_homescreen))
+            elif msg.startswith("{illegal_move}"):
+                stop_clock()
+
+                # Show game over screen indicating they were caught cheating
+                return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
+                                                                                           "return_to_homescreen") else None
+                if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
+                    chess_canvas.after(1000,
+                                       lambda: show_game_over_screen(chess_canvas,
+                                                                     "Game Over!\nYou were disconnected\nfor making an illegal move.",
+                                                                     return_to_homescreen))
             else:
                 if chat_display and chat_display.winfo_exists():
                     chat_display.configure(state="normal")
@@ -471,6 +482,7 @@ def process_opponent_move(move_text):
             game_state["current_player"] = not game_state["current_player"]
             game_state["my_turn"] = True  # It's now our turn
             update_clock_display()
+
             # Update the board display if it exists
             if chess_canvas and chess_canvas.winfo_exists():
                 # We need to update the board from the main thread
@@ -479,6 +491,24 @@ def process_opponent_move(move_text):
             # Update status label if it exists
             if status_label and status_label.winfo_exists():
                 status_label.config(text="Your turn")
+        else:
+            # Send illegal move notification to server
+            send_message("{illegal_move}")
+
+            # Stop the clock
+            stop_clock()
+
+            # Disconnect and show technical win
+            return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
+                                                                                       "return_to_homescreen") else None
+            if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
+                chess_canvas.after(1000,
+                                   lambda: show_game_over_screen(chess_canvas,
+                                                                 "You win!\nOpponent disconnected for\ncheating.",
+                                                                 return_to_homescreen))
+
+            # Close connection after a brief delay to ensure message is sent
+            chess_canvas.after(2000, stop_client)
 
     except Exception as e:
         print(f"Error processing opponent move: {e}")
