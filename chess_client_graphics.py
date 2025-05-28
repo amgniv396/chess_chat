@@ -485,18 +485,18 @@ def stop_client():
 def load_images():
     """Load chess piece images"""
     piece_names = {
-        'r': "white rook",
-        'n': "white knight",
-        'b': "white bishop",
-        'q': "white queen",
-        'k': "white king",
-        'p': "white pawn",
-        'R': "black rook",
-        'N': "black knight",
-        'B': "black bishop",
-        'Q': "black queen",
-        'K': "black king",
-        'P': "black pawn",
+        'R': "white rook",
+        'N': "white knight",
+        'B': "white bishop",
+        'Q': "white queen",
+        'K': "white king",
+        'P': "white pawn",
+        'r': "black rook",
+        'n': "black knight",
+        'b': "black bishop",
+        'q': "black queen",
+        'k': "black king",
+        'p': "black pawn",
     }
 
     for key, name in piece_names.items():
