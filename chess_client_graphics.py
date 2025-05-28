@@ -44,6 +44,13 @@ clock_running = False
 clock_labels = {"white": None, "black": None}
 clock_frame = None
 
+# Clock variables
+white_time = 20  # 5 minutes in seconds
+black_time = 300  # 5 minutes in seconds
+clock_running = False
+clock_labels = {"white": None, "black": None}
+clock_frame = None
+
 
 def format_time(seconds):
     """Format time in MM:SS format"""
@@ -116,7 +123,7 @@ def stop_clock():
 def reset_clock():
     """Reset both clocks to 5 minutes"""
     global white_time, black_time, clock_running
-    white_time = 10
+    white_time = 20
     black_time = 300
     clock_running = False
     update_clock_display()
@@ -134,7 +141,6 @@ def end_game_by_timeout(result_text):
                                                                                "return_to_homescreen") else None
     if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
         chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, result_text, return_to_homescreen))
-
 
 def offer_draw():
     """Send draw offer to opponent"""
@@ -285,6 +291,7 @@ def hide_popup():
 
 def end_game_as_draw():
     """End the game as a draw"""
+    stop_clock()
     return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
                                                                                "return_to_homescreen") else None
     if return_to_homescreen:
@@ -356,10 +363,6 @@ def receive_messages():
                 # Update turn status
                 game_state["my_turn"] = "Your turn" in turn_msg
 
-                # Start the clock if this is the first turn notification
-                if not clock_running and ("Your turn" in turn_msg or "Opponent's turn" in turn_msg):
-                    start_clock()
-
                 # Update status label if it exists
                 if status_label and status_label.winfo_exists():
                     status_text = "Your turn" if game_state["my_turn"] else "Opponent's turn"
@@ -409,6 +412,16 @@ def receive_messages():
                 if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
                     chess_canvas.after(1000,
                                        lambda: show_game_over_screen(chess_canvas, result_text, return_to_homescreen))
+                # Add this new message handler in receive_messages function:
+            elif msg.startswith("{start_clock}"):
+                # Server signals both players to start their clocks simultaneously
+                start_clock()
+                if chat_display and chat_display.winfo_exists():
+                    chat_display.configure(state="normal")
+                    chat_display.insert(tk.END, "System: Game clock started!\n")
+                    chat_display.configure(state="disabled")
+                    chat_display.see(tk.END)
+
             else:
                 if chat_display and chat_display.winfo_exists():
                     chat_display.configure(state="normal")
@@ -694,6 +707,7 @@ def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen
             game_state["selected"] = None
             game_state["current_player"] = not game_state["current_player"]
             game_state["my_turn"] = False  # It's now opponent's turn
+            update_clock_display()
 
             # Update status label
             if status_label and status_label.winfo_exists():
@@ -898,6 +912,7 @@ def start_game(window, return_to_homescreen):
     # Reset clocks when starting a new game
     reset_clock()
 
+
     def send_chat_message(event=None):
         message = chat_entry.get()
         if message.strip() != "":
@@ -917,6 +932,7 @@ def start_game(window, return_to_homescreen):
 
 def resign_game(return_to_homescreen):
     """Resign the current game"""
+    stop_clock()
     send_message("{quit_game}")
     return_to_homescreen()
 

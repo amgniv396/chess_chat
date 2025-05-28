@@ -69,6 +69,11 @@ def try_pairing():
             player1.send(bytes("{turn}Opponent's turn to move.", "utf8"))
             player2.send(bytes("{turn}Your turn to move.", "utf8"))
 
+        # NEW: Start the synchronized clock for both players
+        sleep(1)
+        player1.send(bytes("{start_clock}", "utf8"))
+        player2.send(bytes("{start_clock}", "utf8"))
+
 
 def unpair(client, notify_partner=True):
     """Unpair the client and optionally notify their partner."""
