@@ -12,7 +12,11 @@ window.attributes('-fullscreen', True)
 # Configure ttkbootstrap style
 tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))'''
 
-def show_settings_overlay():
+
+player_name = "Player1"  # Default player name
+player_rating = 1200      # Default rating
+
+def show_profile_overlay():
     # === Create an overlay frame ===
     overlay = tk.Frame(window, bg="", width=window.winfo_screenwidth(), height=window.winfo_screenheight())
     overlay.place(x=0, y=0)
@@ -29,8 +33,8 @@ def show_settings_overlay():
                              fill="#000000", stipple="gray50", outline="")
 
     # Center panel
-    center_x = window.winfo_screenwidth() / 2
-    center_y = window.winfo_screenheight() / 2
+    center_x = window.winfo_screenwidth() // 2
+    center_y = window.winfo_screenheight() // 2
     rect_width = 500
     rect_height = 400
 
@@ -46,39 +50,71 @@ def show_settings_overlay():
         width=2
     )
 
-    # === Settings title ===
-    dark_bg.create_text(center_x, center_y - 150, text="Settings", font=("Arial", 24, "bold"), fill="white")
+    # === Profile title ===
+    dark_bg.create_text(center_x, center_y - 140, text="Player Profile", font=("Arial", 24, "bold"), fill="white")
 
-    # === Sound Slider ===
-    volume_label = tk.Label(overlay, text="Sound Volume", bg="#222222", fg="white", font=("Arial", 12))
-    volume_label.place(x=center_x - 80, y=center_y - 100)
+    # === Player Name ===
+    dark_bg.create_text(center_x-150, center_y-88, text="Name:", font=("Arial", 14), fill="white")
 
-    volume_slider = tk.Scale(overlay, from_=0, to=100, orient=tk.HORIZONTAL, length=200, bg="#222222",
-                             fg="white", troughcolor="#444444", highlightthickness=0)
-    volume_slider.set(50)
-    volume_slider.place(x=center_x - 100, y=center_y - 80)
+    name_entry = tk.Entry(overlay, textvariable=player_name, font=("Arial", 14), width=15)
+    name_entry.place(x=center_x - 100, y=center_y - 100)
+
+    # === Rating Display ===
+    dark_bg.create_text(center_x-150, center_y - 38, text="Rating:", font=("Arial", 14), fill="white")
+    rating_label = tk.Label(overlay, text=player_rating, font=("Arial", 14))
+    rating_label.place(x=center_x - 100, y=center_y - 50)
+
+    # === Texture Options Title ===
+    dark_bg.create_text(center_x - 141, center_y + 8, text="Themes:", font=("Arial", 14), fill="white")
 
     # === Texture Options ===
     textures = ["black bishop", "black king", "black knight"]
+    selected_texture = tk.StringVar(value="black king")
+
     for i, tex in enumerate(textures):
         img = ImageTk.PhotoImage(Image.open(f"assets/pieces/{tex}.png").resize((80, 80)))
-        label = tk.Label(overlay, image=img, bg="#222222", borderwidth=2, relief="ridge")
+
+        texture_frame = tk.Frame(overlay, bg="#333333", relief="raised", bd=2)
+        texture_frame.place(x=center_x - 151 + i * 110, y=center_y + 35, width=90, height=90)
+
+        label = tk.Label(texture_frame, image=img, bg="#333333")
         label.image = img
-        label.place(x=center_x - 130 + i * 100, y=center_y)
+        label.pack()
+
+        def select_texture(t=tex):
+            selected_texture.set(t)
+
+        label.bind("<Button-1>", lambda e, t=tex: select_texture(t))
 
     # === Close Button ===
-    close_btn = tk.Button(overlay, text="X", command=overlay.destroy, font=("Arial", 12, "bold"),
-                          bg="red", fg="white", width=3)
-    close_btn.place(x=center_x + rect_width / 2 - 30, y=center_y - rect_height / 2 + 10)
+    close_btn = tk.Button(overlay, text="✕", command=overlay.destroy, font=("Arial", 14, "bold"),
+                          bg="#ff4444", fg="white", width=3, height=1)
+    close_btn.place(x=center_x + rect_width / 2 - 40, y=center_y - rect_height / 2 + 10)
+
+    # === Save Button ===
+    def save_profile():
+        print(f"Name: {player_name.get()}")
+        print(f"Rating: {player_rating.get()}")
+        print(f"Selected texture: {selected_texture.get()}")
+        # Save logic here...
+        overlay.destroy()
+
+    save_btn = tk.Button(overlay, text="Save", command=save_profile, font=("Arial", 12, "bold"),
+                         bg="#00aa44", fg="white", width=8, height=1)
+    save_btn.place(x=center_x - 40, y=center_y + 140)
+
+
 
 # ----------------- Utility functions -----------------
 
 def start_game():
     chess_client_graphics.start_game(window, return_to_homescreen)
 
+
 def exit_game():
     chess_client_graphics.stop_client()
     window.quit()
+
 
 def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
     """Draw a rounded rectangle on the canvas"""
@@ -97,6 +133,7 @@ def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
         x1, y1
     ]
     return canvas.create_polygon(points, **kwargs, smooth=True)
+
 
 def create_hexagon_image_button(canvas, x, y, size, image_path, command, color="#3498db"):
     """Create one hexagon button with an image inside."""
@@ -143,6 +180,7 @@ def create_hexagon_image_button(canvas, x, y, size, image_path, command, color="
 
     return hexagon, image_id, {"x": x, "y": y}
 
+
 def create_hexagon_grid(canvas, center_x, center_y, hex_size):
     """Create a group of hexagons for the home screen."""
     pieces_config = [
@@ -181,11 +219,12 @@ def create_hexagon_grid(canvas, center_x, center_y, hex_size):
 
     return hexagons
 
+
 # ----------------- Home Screen functions -----------------
 
 def create_home_screen():
     global bg_frame, canvas, bg_image, logo_image, logo_label, title_label
-    global start_button, exit_button, settings_image, settings_button
+    global start_button, exit_button, profile_image, profile_button
 
     width = window.winfo_screenwidth()
     height = window.winfo_screenheight()
@@ -202,7 +241,8 @@ def create_home_screen():
         Image.open("assets/utils/chessBackground.jpg").resize(
             (width, height))
     )
-    logo_image = ImageTk.PhotoImage(Image.open("assets/utils/chessLogo.png").resize((int(width//7.7), int(width//7.7))))
+    logo_image = ImageTk.PhotoImage(
+        Image.open("assets/utils/chessLogo.png").resize((int(width // 7.7), int(width // 7.7))))
 
     canvas.create_image(0, 0, image=bg_image, anchor=tk.NW)
 
@@ -247,18 +287,25 @@ def create_home_screen():
     )
     exit_button.place(relx=0.5, rely=0.7, anchor=tk.CENTER)
 
-    settings_image = ImageTk.PhotoImage(Image.open("assets/utils/settingsIcon.png").resize((50, 50)))
-    settings_button = tb.Button(
-        window, image=settings_image,
-        command=lambda: show_settings_overlay(),
+    # Profile button (changed from settings)
+    try:
+        profile_image = ImageTk.PhotoImage(Image.open("assets/utils/profileIcon.png").resize((50, 50)))
+    except:
+        # Fallback if profile icon doesn't exist, use settings icon
+        profile_image = ImageTk.PhotoImage(Image.open("assets/utils/settingsIcon.png").resize((50, 50)))
+
+    profile_button = tb.Button(
+        window, image=profile_image,
+        command=lambda: show_profile_overlay(),
         bootstyle="secondary"
     )
-    settings_button.place(relx=0.955)
+    profile_button.place(relx=0.955)
 
     # Hexagon grid
     hex_x = width * 0.15
     hex_y = height * 0.45
     create_hexagon_grid(canvas, hex_x, hex_y, 60)
+
 
 def return_to_homescreen():
     chess_client_graphics.send_message("{quit_game}")
@@ -268,6 +315,7 @@ def return_to_homescreen():
 
     # Recreate home screen
     create_home_screen()
+
 
 # ----------------- Start app -----------------
 
@@ -298,7 +346,7 @@ def run_home_screen(parent_window=None):
         window.title("Chess App")
         window.attributes('-fullscreen', True)
         tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))'''
-        #TODO: check if needed
+        # TODO: check if needed
         pass
 
     tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
