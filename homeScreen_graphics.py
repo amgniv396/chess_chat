@@ -56,7 +56,7 @@ def show_profile_overlay():
     # === Player Name ===
     dark_bg.create_text(center_x-150, center_y-88, text="Name:", font=("Arial", 14), fill="white")
 
-    name_entry = tk.Entry(overlay, textvariable=player_name, font=("Arial", 14), width=15)
+    name_entry = tk.Entry(overlay, textvariable=tk.StringVar(value=player_name), font=("Arial", 14), width=15, bg="#333333", fg="white")
     name_entry.place(x=center_x - 100, y=center_y - 100)
 
     # === Rating Display ===
