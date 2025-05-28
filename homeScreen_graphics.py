@@ -4,15 +4,6 @@ from PIL import Image, ImageTk
 import math
 import chess_client_graphics
 
-# Initialize main window
-'''window = tk.Tk()
-window.title("Chess App")
-window.attributes('-fullscreen', True)
-
-# Configure ttkbootstrap style
-tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))'''
-
-
 player_name = "Player1"  # Default player name
 player_rating = 1200      # Default rating
 
@@ -316,18 +307,16 @@ def return_to_homescreen():
     # Recreate home screen
     create_home_screen()
 
-
 # ----------------- Start app -----------------
 
-'''create_home_screen()
-
-window.mainloop()'''
-
-
-def run_home_screen(parent_window=None):
+def run_home_screen(parent_window=None, username="Player1"):
     """Run the home screen from an external module.
-    If parent_window is provided, it will be used instead of creating a new window."""
-    global window
+    If parent_window is provided, it will be used instead of creating a new window.
+    If username is provided, it will update the player_name."""
+    global window, player_name
+
+    # Update the player name with the provided username
+    player_name = username
 
     if parent_window:
         # Use the existing window from sign_in_page.py

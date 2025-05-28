@@ -375,8 +375,8 @@ class SignInApp:
         # Import homeScreen_graphics
         try:
             import homeScreen_graphics
-            # Pass the current window to the home screen module
-            homeScreen_graphics.run_home_screen(self.root)
+            # Pass the current window and username to the home screen module
+            homeScreen_graphics.run_home_screen(self.root, username)
 
         except ImportError as e:
             messagebox.showerror("Error", f"Could not load home screen: {str(e)}")
