@@ -84,11 +84,31 @@ def show_profile_overlay():
 
     # === Save Button ===
     def save_profile():
-        print(f"Name: {player_name.get()}")
-        print(f"Rating: {player_rating.get()}")
-        print(f"Selected texture: {selected_texture.get()}")
-        # Save logic here...
-        overlay.destroy()
+        global player_name
+        new_name = name_entry.get()
+
+        # Import the database class
+        from SQLL_database import UserDatabase
+        db = UserDatabase()
+
+        # Update username in database
+        success, message = db.update_username(player_name, new_name)
+
+        if success:
+            # Update the global player_name variable
+            player_name = new_name
+            print(f"Name updated to: {new_name}")
+            print(f"Rating: {player_rating}")
+            print(f"Selected texture: {selected_texture.get()}")
+
+            # Show success message
+            import tkinter.messagebox as messagebox
+            messagebox.showinfo("Success", "Profile updated successfully!")
+            overlay.destroy()
+        else:
+            # Show error message
+            import tkinter.messagebox as messagebox
+            messagebox.showerror("Error", message)
 
     save_btn = tk.Button(overlay, text="Save", command=save_profile, font=("Arial", 12, "bold"),
                          bg="#00aa44", fg="white", width=8, height=1)

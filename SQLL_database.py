@@ -19,6 +19,7 @@ class UserDatabase:
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            rating INTEGER DEFAULT 0,
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
@@ -419,6 +420,73 @@ class UserDatabase:
         """Add a sample user for testing"""
         if not self.email_exists("eyal.shara@gmail.com") and not self.username_exists("eyal"):
             self.add_user("eyal", "eyal.shara@gmail.com", "12345678")
+
+    # Add this function to SQLL_database.py in the UserDatabase class
+
+    def update_username(self, old_username, new_username):
+        """Update a user's username"""
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+
+        try:
+            # Check if the old username exists
+            cursor.execute("SELECT id FROM users WHERE username = ? AND is_active = TRUE", (old_username,))
+            user = cursor.fetchone()
+
+            if not user:
+                return False, "User not found"
+
+            # Check if the new username already exists
+            cursor.execute("SELECT id FROM users WHERE username = ? AND is_active = TRUE", (new_username,))
+            existing_user = cursor.fetchone()
+
+            if existing_user:
+                return False, "Username already exists"
+
+            # Update the username
+            cursor.execute(
+                "UPDATE users SET username = ? WHERE username = ?",
+                (new_username, old_username)
+            )
+
+            conn.commit()
+            return True, "Username updated successfully"
+        except sqlite3.Error as e:
+            return False, f"Database error: {str(e)}"
+        finally:
+            conn.close()
+
+    # Add this function to SQLL_database.py in the UserDatabase class
+
+    def update_rating(self, username, new_rating):
+        """Update a user's rating"""
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+
+        try:
+            # Check if the username exists
+            cursor.execute("SELECT id FROM users WHERE username = ? AND is_active = TRUE", (username,))
+            user = cursor.fetchone()
+
+            if not user:
+                return False, "User not found"
+
+            # Validate rating (should be non-negative)
+            if new_rating < 0:
+                return False, "Rating cannot be negative"
+
+            # Update the rating
+            cursor.execute(
+                "UPDATE users SET rating = ? WHERE username = ?",
+                (new_rating, username)
+            )
+
+            conn.commit()
+            return True, "Rating updated successfully"
+        except sqlite3.Error as e:
+            return False, f"Database error: {str(e)}"
+        finally:
+            conn.close()
 
 
 # Example usage
