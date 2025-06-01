@@ -119,7 +119,7 @@ def show_profile_overlay():
 # ----------------- Utility functions -----------------
 
 def start_game():
-    chess_client_graphics.start_game(window, return_to_homescreen)
+    chess_client_graphics.start_game(window, player_name,return_to_homescreen)
 
 
 def exit_game():

@@ -458,22 +458,25 @@ class UserDatabase:
 
     # Add this function to SQLL_database.py in the UserDatabase class
 
-    def update_rating(self, username, new_rating):
-        """Update a user's rating"""
+    def add_rating(self, username, rating_to_add):
+        """Add to a user's existing rating"""
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
 
         try:
-            # Check if the username exists
-            cursor.execute("SELECT id FROM users WHERE username = ? AND is_active = TRUE", (username,))
+            # Check if the username exists and get current rating
+            cursor.execute("SELECT id, rating FROM users WHERE username = ? AND is_active = TRUE", (username,))
             user = cursor.fetchone()
 
             if not user:
                 return False, "User not found"
 
-            # Validate rating (should be non-negative)
+            user_id, current_rating = user
+            new_rating = current_rating + rating_to_add
+
+            # Validate that the new rating doesn't go below 0
             if new_rating < 0:
-                return False, "Rating cannot be negative"
+                return False, "Rating cannot go below zero"
 
             # Update the rating
             cursor.execute(
@@ -482,7 +485,7 @@ class UserDatabase:
             )
 
             conn.commit()
-            return True, "Rating updated successfully"
+            return True, f"Rating updated successfully. New rating: {new_rating}"
         except sqlite3.Error as e:
             return False, f"Database error: {str(e)}"
         finally:

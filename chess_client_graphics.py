@@ -51,6 +51,8 @@ clock_running = False
 clock_labels = {"white": None, "black": None}
 clock_frame = None
 
+user_name = None
+
 
 def format_time(seconds):
     """Format time in MM:SS format"""
@@ -140,7 +142,7 @@ def end_game_by_timeout(result_text):
     return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
                                                                                "return_to_homescreen") else None
     if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
-        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, result_text, return_to_homescreen))
+        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, result_text,False ,return_to_homescreen))
 
 def offer_draw():
     """Send draw offer to opponent"""
@@ -295,7 +297,7 @@ def end_game_as_draw():
     return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
                                                                                "return_to_homescreen") else None
     if return_to_homescreen:
-        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, "Game drawn by agreement!",
+        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, "Game drawn by agreement!",None,
                                                                return_to_homescreen))
 
 
@@ -407,11 +409,13 @@ def receive_messages():
                 else:
                     result_text = "Game ended by timeout!"
 
+                win = ("White" in result_text and game_state['my_color']) or ("Black" in result_text and not game_state['my_color'])
+
                 return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
                                                                                            "return_to_homescreen") else None
                 if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
                     chess_canvas.after(1000,
-                                       lambda: show_game_over_screen(chess_canvas, result_text, return_to_homescreen))
+                                       lambda: show_game_over_screen(chess_canvas, result_text,win ,return_to_homescreen))
                 # Add this new message handler in receive_messages function:
             elif msg.startswith("{start_clock}"):
                 # Server signals both players to start their clocks simultaneously
@@ -440,7 +444,7 @@ def receive_messages():
                                                                                            "return_to_homescreen") else None
                 if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
                     chess_canvas.after(1000,
-                                       lambda: show_game_over_screen(chess_canvas, result_text, return_to_homescreen))
+                                       lambda: show_game_over_screen(chess_canvas, result_text,True ,return_to_homescreen))
             elif msg.startswith("{illegal_move}"):
                 stop_clock()
 
@@ -450,7 +454,7 @@ def receive_messages():
                 if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
                     chess_canvas.after(1000,
                                        lambda: show_game_over_screen(chess_canvas,
-                                                                     "Game Over!\nYou were disconnected\nfor making an illegal move.",
+                                                                     "Game Over!\nYou were disconnected\nfor making an illegal move.", False,
                                                                      return_to_homescreen))
             else:
                 if chat_display and chat_display.winfo_exists():
@@ -504,7 +508,7 @@ def process_opponent_move(move_text):
             if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
                 chess_canvas.after(1000,
                                    lambda: show_game_over_screen(chess_canvas,
-                                                                 "You win!\nOpponent disconnected for\ncheating.",
+                                                                 "You win!\nOpponent disconnected for\ncheating.", False,
                                                                  return_to_homescreen))
 
             # Close connection after a brief delay to ensure message is sent
@@ -698,9 +702,13 @@ def handle_promotion_selection(piece, canvas, chess_board, game_state):
             print("Game over!")
             return_to_homescreen = canvas.master.return_to_homescreen if hasattr(canvas.master,
                                                                                  "return_to_homescreen") else None
+            result_text = game_result(chess_board)
+
+            win = ("White" in result_text and game_state['my_color']) or (
+                        "Black" in result_text and not game_state['my_color'])
             if return_to_homescreen:
                 canvas.after(2000,
-                             lambda: show_game_over_screen(canvas, game_result(chess_board), return_to_homescreen))
+                             lambda: show_game_over_screen(canvas, result_text, win, return_to_homescreen))
 
     # Update the board display
     update_board(canvas, chess_board, game_state)
@@ -768,8 +776,14 @@ def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen
             # Check for game over
             if chess_board.is_game_over():
                 print("Game over!")
+
+                result_text = game_result(chess_board)
+
+                win = ("White" in result_text and game_state['my_color']) or (
+                        "Black" in result_text and not game_state['my_color'])
+
                 canvas.after(2000,
-                             lambda: show_game_over_screen(canvas, game_result(chess_board), return_to_homescreen))
+                             lambda: show_game_over_screen(canvas, result_text, win, return_to_homescreen))
         else:
             # If the move is invalid, but they clicked on their own piece, select that piece instead
             if piece and piece.color == game_state["my_color"]:
@@ -803,7 +817,6 @@ def game_result(chess_board):
         result_text = "Black wins!"
     else:
         result_text = "Draw!"
-
     return result_text
 
 
@@ -852,9 +865,11 @@ def update_board(canvas, chess_board, game_state):
     y_position = BOARD_SIZE - 15
 
 
-def start_game(window, return_to_homescreen):
+def start_game(window, userName, return_to_homescreen):
     """Start a new chess game"""
-    global chat_display, board, game_state, chess_canvas, status_label
+    global chat_display, board, game_state, chess_canvas, status_label, user_name
+
+    user_name = userName
 
     # Reset the game state
     board = chess.Board()
@@ -918,7 +933,7 @@ def start_game(window, return_to_homescreen):
 
     # === Create Buttons (Draw, Resign) ===
     draw_button = tk.Button(canvas, text="Offer Draw", width=15, command=offer_draw)
-    resign_button = tk.Button(canvas, text="Resign", width=15, command=lambda: resign_game(return_to_homescreen))
+    resign_button = tk.Button(canvas, text="Resign", width=15, command=lambda: resign_game(canvas, return_to_homescreen))
 
     canvas.create_window(window.winfo_screenwidth() / 2 + 100, window.winfo_screenheight() / 2 + BOARD_SIZE / 2 + 25,
                          window=draw_button)
@@ -978,14 +993,20 @@ def start_game(window, return_to_homescreen):
     chat_entry.bind("<Return>", send_chat_message)
 
 
-def resign_game(return_to_homescreen):
+def resign_game(canvas, return_to_homescreen):
     """Resign the current game"""
     stop_clock()
     send_message("{opponent_resigned}")
-    return_to_homescreen()
+    show_game_over_screen(canvas, "you win, opponent resign",False, return_to_homescreen)
+
+def show_game_over_screen(canvas, result_text, win, return_to_homescreen):
+    from SQLL_database import UserDatabase
+    db = UserDatabase()
+
+    if win is not None:
+        db.add_rating(user_name, 10 if win else -10)
 
 
-def show_game_over_screen(canvas, result_text, return_to_homescreen):
     """Display game over screen with result"""
     # Center of the canvas
     center_x = canvas.winfo_width() / 2
