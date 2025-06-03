@@ -3,9 +3,10 @@ import ttkbootstrap as tb
 from PIL import Image, ImageTk
 import math
 import chess_client_graphics
+from SQLL_database import UserDatabase
 
 player_name = "Player1"  # Default player name
-player_rating = 1200      # Default rating
+player_rating = 0      # Default rating
 
 def show_profile_overlay():
     # === Create an overlay frame ===
@@ -319,6 +320,10 @@ def create_home_screen():
 
 
 def return_to_homescreen():
+    global  player_name
+    db = UserDatabase()
+    _, player_rating = db.get_rating(player_name)
+
     chess_client_graphics.send_message("{quit_game}")
     # Destroy all current widgets
     for widget in window.winfo_children():
@@ -333,11 +338,15 @@ def run_home_screen(parent_window=None, username="Player1"):
     """Run the home screen from an external module.
     If parent_window is provided, it will be used instead of creating a new window.
     If username is provided, it will update the player_name."""
-    global window, player_name
+    global window, player_name, player_rating
 
     # Update the player name with the provided username
     player_name = username
+    db = UserDatabase()
+    _,player_rating = db.get_rating(player_name)
 
+    if not player_rating.isdigit():
+        player_rating = 0
     if parent_window:
         # Use the existing window from sign_in_page.py
         window = parent_window

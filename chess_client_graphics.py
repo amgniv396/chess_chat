@@ -74,14 +74,14 @@ def update_clock():
         if white_time <= 0:
             white_time = 0
             clock_running = False
-            end_game_by_timeout("Black wins by timeout!")
+            end_game_by_timeout("Black wins by timeout!", game_state["my_color"] == chess.BLACK)
             return
     else:
         black_time -= 1
         if black_time <= 0:
             black_time = 0
             clock_running = False
-            end_game_by_timeout("White wins by timeout!")
+            end_game_by_timeout("White wins by timeout!", game_state["my_color"] == chess.WHITE)
             return
 
     # Update clock display
@@ -131,7 +131,7 @@ def reset_clock():
     update_clock_display()
 
 
-def end_game_by_timeout(result_text):
+def end_game_by_timeout(result_text, win):
     """End the game due to timeout"""
     global chess_canvas
     stop_clock()
@@ -142,7 +142,7 @@ def end_game_by_timeout(result_text):
     return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
                                                                                "return_to_homescreen") else None
     if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
-        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, result_text,False ,return_to_homescreen))
+        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, result_text,win ,return_to_homescreen))
 
 def offer_draw():
     """Send draw offer to opponent"""
@@ -399,24 +399,6 @@ def receive_messages():
                 draw_offered_by_me = False
                 hide_popup()
                 show_info_popup("Draw offer declined", "red")
-            elif msg.startswith("{timeout}"):
-                stop_clock()
-                # Determine who won based on remaining time
-                if white_time <= 0:
-                    result_text = "Black wins by timeout!"
-                elif black_time <= 0:
-                    result_text = "White wins by timeout!"
-                else:
-                    result_text = "Game ended by timeout!"
-
-                win = ("White" in result_text and game_state['my_color']) or ("Black" in result_text and not game_state['my_color'])
-
-                return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
-                                                                                           "return_to_homescreen") else None
-                if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
-                    chess_canvas.after(1000,
-                                       lambda: show_game_over_screen(chess_canvas, result_text,win ,return_to_homescreen))
-                # Add this new message handler in receive_messages function:
             elif msg.startswith("{start_clock}"):
                 # Server signals both players to start their clocks simultaneously
                 start_clock()
@@ -1002,11 +984,12 @@ def resign_game(canvas, return_to_homescreen):
 def show_game_over_screen(canvas, result_text, win, return_to_homescreen):
     from SQLL_database import UserDatabase
     db = UserDatabase()
-
+    print("win", win)
+    print("name", user_name)
     if win is not None:
         db.add_rating(user_name, 10 if win else -10)
 
-
+    print(db.get_rating(user_name))
     """Display game over screen with result"""
     # Center of the canvas
     center_x = canvas.winfo_width() / 2

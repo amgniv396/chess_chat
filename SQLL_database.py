@@ -491,6 +491,26 @@ class UserDatabase:
         finally:
             conn.close()
 
+    def get_rating(self, username):
+        """Get a user's current rating"""
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+
+        try:
+            # Get the user's rating
+            cursor.execute("SELECT rating FROM users WHERE username = ? AND is_active = TRUE", (username,))
+            result = cursor.fetchone()
+
+            if not result:
+                return False, "User not found"
+
+            rating = str(result[0])
+            return True, rating
+        except sqlite3.Error as e:
+            return False, f"Database error: {str(e)}"
+        finally:
+            conn.close()
+
 
 # Example usage
 if __name__ == "__main__":
