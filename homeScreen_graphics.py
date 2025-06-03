@@ -136,16 +136,30 @@ def show_profile_overlay():
     save_btn.place(x=center_x - 40, y=center_y + 140)
 
 
-# ----------------- Utility functions -----------------
+# ----------------- Game mode functions -----------------
 
 def start_game():
     chess_client_graphics.start_game(window, player_name, return_to_homescreen)
+
+
+def play_with_stockfish():
+    # Placeholder function for Stockfish gameplay
+    print("Play with Stockfish clicked - functionality to be implemented")
+    pass
+
+
+def play_with_bot():
+    # Placeholder function for bot gameplay
+    print("Play with Bot clicked - functionality to be implemented")
+    pass
 
 
 def exit_game():
     chess_client_graphics.stop_client()
     window.quit()
 
+
+# ----------------- Utility functions -----------------
 
 def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
     """Draw a rounded rectangle on the canvas"""
@@ -255,7 +269,7 @@ def create_hexagon_grid(canvas, center_x, center_y, hex_size):
 
 def create_home_screen():
     global bg_frame, canvas, bg_image, logo_image, logo_label, title_label
-    global start_button, exit_button, profile_image, profile_button
+    global start_button, stockfish_button, bot_button, exit_button, profile_image, profile_button
 
     width = window.winfo_screenwidth()
     height = window.winfo_screenheight()
@@ -277,12 +291,11 @@ def create_home_screen():
 
     canvas.create_image(0, 0, image=bg_image, anchor=tk.NW)
 
-    # Rounded rectangle background
-
+    # Rounded rectangle background (adjusted height for additional buttons)
     center_x = width / 2
-    center_y = height * 0.46
+    center_y = height * 0.5
     rect_width = 320
-    rect_height = 525
+    rect_height = 625  # Increased height to accommodate new buttons
 
     create_rounded_rectangle(
         canvas,
@@ -303,20 +316,37 @@ def create_home_screen():
     title_label = tb.Label(window, text="Chess Master", font=("Arial", 30), background="#111111", foreground="#ffffff")
     title_label.place(relx=0.5, rely=0.47, anchor=tk.CENTER)
 
-    # Start and Exit buttons
+    # Start Game button (multiplayer)
     start_button = tb.Button(
-        window, text="Start Game",
+        window, text="Multiplayer",
         command=start_game,
         bootstyle="success", padding=15, width=15
     )
-    start_button.place(relx=0.5, rely=0.6, anchor=tk.CENTER)
+    start_button.place(relx=0.5, rely=0.56, anchor=tk.CENTER)
 
+    # Play with Stockfish button
+    stockfish_button = tb.Button(
+        window, text="Play vs Stockfish",
+        command=play_with_stockfish,
+        bootstyle="info", padding=15, width=15
+    )
+    stockfish_button.place(relx=0.5, rely=0.64, anchor=tk.CENTER)
+
+    # Play with Bot button
+    bot_button = tb.Button(
+        window, text="Play vs Bot",
+        command=play_with_bot,
+        bootstyle="info", padding=15, width=15
+    )
+    bot_button.place(relx=0.5, rely=0.72, anchor=tk.CENTER)
+
+    # Exit Game button
     exit_button = tb.Button(
         window, text="Exit Game",
         command=exit_game,
         bootstyle="danger", padding=15, width=15
     )
-    exit_button.place(relx=0.5, rely=0.7, anchor=tk.CENTER)
+    exit_button.place(relx=0.5, rely=0.8, anchor=tk.CENTER)
 
     # Profile button (changed from settings)
     try:
