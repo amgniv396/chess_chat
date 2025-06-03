@@ -143,9 +143,17 @@ def start_game():
 
 
 def play_with_stockfish():
-    # Placeholder function for Stockfish gameplay
-    print("Play with Stockfish clicked - functionality to be implemented")
-    pass
+    try:
+        import simple_stockfish
+        simple_stockfish.play_with_stockfish(window, return_to_homescreen, player_name)
+    except ImportError as e:
+        print(f"Error importing simple_stockfish: {e}")
+        import tkinter.messagebox as messagebox
+        messagebox.showerror("Error", "Please install required packages:\npip install stockfish")
+    except Exception as e:
+        print(f"Error starting Stockfish game: {e}")
+        import tkinter.messagebox as messagebox
+        messagebox.showerror("Error", f"Failed to start Stockfish game: {str(e)}")
 
 
 def play_with_bot():
