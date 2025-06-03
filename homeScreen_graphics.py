@@ -6,9 +6,22 @@ import chess_client_graphics
 from SQLL_database import UserDatabase
 
 player_name = "Player1"  # Default player name
-player_rating = 0      # Default rating
+player_rating = 0  # Default rating
+
 
 def show_profile_overlay():
+    global player_name, player_rating
+
+    # Get current rating from database
+    db = UserDatabase()
+    _, current_rating = db.get_rating(player_name)
+
+    # Update global player_rating if we got a valid rating
+    if current_rating and str(current_rating).isdigit():
+        player_rating = current_rating
+    else:
+        player_rating = 0
+
     # === Create an overlay frame ===
     overlay = tk.Frame(window, bg="", width=window.winfo_screenwidth(), height=window.winfo_screenheight())
     overlay.place(x=0, y=0)
@@ -46,14 +59,15 @@ def show_profile_overlay():
     dark_bg.create_text(center_x, center_y - 140, text="Player Profile", font=("Arial", 24, "bold"), fill="white")
 
     # === Player Name ===
-    dark_bg.create_text(center_x-150, center_y-88, text="Name:", font=("Arial", 14), fill="white")
+    dark_bg.create_text(center_x - 150, center_y - 88, text="Name:", font=("Arial", 14), fill="white")
 
-    name_entry = tk.Entry(overlay, textvariable=tk.StringVar(value=player_name), font=("Arial", 14), width=15, bg="#333333", fg="white")
+    name_entry = tk.Entry(overlay, textvariable=tk.StringVar(value=player_name), font=("Arial", 14), width=15,
+                          bg="#333333", fg="white")
     name_entry.place(x=center_x - 100, y=center_y - 100)
 
     # === Rating Display ===
-    dark_bg.create_text(center_x-150, center_y - 38, text="Rating:", font=("Arial", 14), fill="white")
-    rating_label = tk.Label(overlay, text=player_rating, font=("Arial", 14))
+    dark_bg.create_text(center_x - 150, center_y - 38, text="Rating:", font=("Arial", 14), fill="white")
+    rating_label = tk.Label(overlay, text=str(player_rating), font=("Arial", 14), bg="#222222", fg="white")
     rating_label.place(x=center_x - 100, y=center_y - 50)
 
     # === Texture Options Title ===
@@ -85,7 +99,7 @@ def show_profile_overlay():
 
     # === Save Button ===
     def save_profile():
-        global player_name
+        global player_name, player_rating
         new_name = name_entry.get()
 
         # Import the database class
@@ -98,6 +112,12 @@ def show_profile_overlay():
         if success:
             # Update the global player_name variable
             player_name = new_name
+
+            # Get updated rating after name change
+            _, updated_rating = db.get_rating(player_name)
+            if updated_rating and str(updated_rating).isdigit():
+                player_rating = updated_rating
+
             print(f"Name updated to: {new_name}")
             print(f"Rating: {player_rating}")
             print(f"Selected texture: {selected_texture.get()}")
@@ -116,11 +136,10 @@ def show_profile_overlay():
     save_btn.place(x=center_x - 40, y=center_y + 140)
 
 
-
 # ----------------- Utility functions -----------------
 
 def start_game():
-    chess_client_graphics.start_game(window, player_name,return_to_homescreen)
+    chess_client_graphics.start_game(window, player_name, return_to_homescreen)
 
 
 def exit_game():
@@ -320,9 +339,15 @@ def create_home_screen():
 
 
 def return_to_homescreen():
-    global  player_name
+    global player_name, player_rating
     db = UserDatabase()
-    _, player_rating = db.get_rating(player_name)
+    _, current_rating = db.get_rating(player_name)
+
+    # Update player_rating with current value from database
+    if current_rating and str(current_rating).isdigit():
+        player_rating = current_rating
+    else:
+        player_rating = 0
 
     chess_client_graphics.send_message("{quit_game}")
     # Destroy all current widgets
@@ -331,6 +356,7 @@ def return_to_homescreen():
 
     # Recreate home screen
     create_home_screen()
+
 
 # ----------------- Start app -----------------
 
@@ -343,10 +369,14 @@ def run_home_screen(parent_window=None, username="Player1"):
     # Update the player name with the provided username
     player_name = username
     db = UserDatabase()
-    _,player_rating = db.get_rating(player_name)
+    _, current_rating = db.get_rating(player_name)
 
-    if not player_rating.isdigit():
+    # Update player_rating with proper type checking
+    if current_rating and str(current_rating).isdigit():
+        player_rating = current_rating
+    else:
         player_rating = 0
+
     if parent_window:
         # Use the existing window from sign_in_page.py
         window = parent_window
