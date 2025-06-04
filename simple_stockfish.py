@@ -238,10 +238,16 @@ def on_square_click(event):
 
     row = event.y // SQUARE_SIZE
     col = event.x // SQUARE_SIZE
-    square = chess.square(col, 7 - row)
-    piece = stockfish_board.piece_at(square)
 
-    if stockfish_game_state["selected"]:
+    print(row,col)
+
+    # FIX: Use chess.square with correct rank calculation
+    square = chess.square(col, 7 - row)  # This was the bug - row needs to be flipped
+
+    print(square)
+    piece = stockfish_board.piece_at(square)
+    print(piece)
+    if stockfish_game_state["selected"] is not None:
         move = chess.Move(stockfish_game_state["selected"], square)
         if move in stockfish_board.legal_moves:
             stockfish_board.push(move)
@@ -284,7 +290,7 @@ def update_board():
     draw_pieces(stockfish_canvas, stockfish_board.fen())
 
     # Highlight selected square
-    if stockfish_game_state["selected"]:
+    if stockfish_game_state["selected"] is not None:
         row = 7 - chess.square_rank(stockfish_game_state["selected"])
         col = chess.square_file(stockfish_game_state["selected"])
         x1, y1 = col * SQUARE_SIZE, row * SQUARE_SIZE
@@ -428,8 +434,27 @@ def resign_game(return_to_homescreen):
     show_game_over("You resigned! Stockfish wins.", False, return_to_homescreen)
 
 
+def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
+    """Draw a rounded rectangle on the canvas"""
+    points = [
+        x1 + radius, y1,
+        x2 - radius, y1,
+        x2, y1,
+        x2, y1 + radius,
+        x2, y2 - radius,
+        x2, y2,
+        x2 - radius, y2,
+        x1 + radius, y2,
+        x1, y2,
+        x1, y2 - radius,
+        x1, y1 + radius,
+        x1, y1
+    ]
+    return canvas.create_polygon(points, **kwargs, smooth=True)
+
+
 def show_game_over(result_text, win, return_to_homescreen):
-    """Show game over screen"""
+    """Show game over screen with modern design like chess_client_graphics"""
     global stockfish_player_name
 
     # Clean up Stockfish engine
@@ -445,16 +470,47 @@ def show_game_over(result_text, win, return_to_homescreen):
         except Exception as e:
             print(f"Rating update error: {e}")
 
-    # Show result
+    # Show result with modern design
     if stockfish_canvas and stockfish_canvas.winfo_exists():
-        stockfish_canvas.delete("all")
-        stockfish_canvas.create_rectangle(0, 0, BOARD_SIZE, BOARD_SIZE, fill="black")
-        stockfish_canvas.create_text(BOARD_SIZE / 2, BOARD_SIZE / 2 - 50, text=result_text,
-                                     font=("Arial", 24, "bold"), fill="white")
+        # Get canvas dimensions
+        canvas_width = stockfish_canvas.winfo_width()
+        canvas_height = stockfish_canvas.winfo_height()
 
+        # Center coordinates
+        center_x = canvas_width / 2
+        center_y = canvas_height / 2
+
+        rect_width = 300
+        rect_height = 200
+
+        # Clear the canvas
+        stockfish_canvas.delete("all")
+
+        # Draw a semi-transparent dark background
+        stockfish_canvas.create_rectangle(0, 0, canvas_width, canvas_height,
+                                          fill="#000000", stipple="gray50", outline="")
+
+        # Draw rounded rectangle background
+        create_rounded_rectangle(
+            stockfish_canvas,
+            center_x - rect_width / 2,
+            center_y - rect_height / 2,
+            center_x + rect_width / 2,
+            center_y + rect_height / 2,
+            radius=40,
+            fill="#111111",
+            outline="#333333",
+            width=2
+        )
+
+        # Draw game result text
+        stockfish_canvas.create_text(center_x, center_y - rect_height / 4,
+                                     text=result_text, font=("Arial", 24, "bold"), fill="white")
+
+        # Create "Return Home" button
         return_btn = tk.Button(stockfish_canvas, text="Return Home",
                                font=("Arial", 14), command=return_to_homescreen)
-        stockfish_canvas.create_window(BOARD_SIZE / 2, BOARD_SIZE / 2 + 50, window=return_btn)
+        stockfish_canvas.create_window(center_x, center_y + rect_height / 4, window=return_btn)
 
 
 def play_with_stockfish(window, return_to_homescreen, player_name="Player1"):

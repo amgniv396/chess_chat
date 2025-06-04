@@ -729,7 +729,7 @@ def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen
     square = chess.square(col, 7 - row)
     piece = chess_board.piece_at(square)
 
-    if game_state["selected"]:
+    if game_state["selected"] is not None:
         # Check if this is a pawn promotion move
         if is_promotion_move(game_state["selected"], square, chess_board):
             # Show promotion piece selection UI
@@ -822,7 +822,7 @@ def update_board(canvas, chess_board, game_state):
         return
 
     # Highlight selected square
-    if game_state["selected"]:
+    if game_state["selected"]  is not None:
         row = 7 - chess.square_rank(game_state["selected"])
         col = chess.square_file(game_state["selected"])
         x1 = col * SQUARE_SIZE
