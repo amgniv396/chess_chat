@@ -425,19 +425,9 @@ def run_home_screen(parent_window=None, username="Player1"):
         # Configure window properties
         window.title("Chess App")
 
-    else:
-        '''# Create a new window if none is provided (when running directly)
-        window = tk.Tk()
-        window.title("Chess App")
-        window.attributes('-fullscreen', True)
-        tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))'''
-        # TODO: check if needed
-        pass
-
     tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
     # Create the home screen UI
     create_home_screen()
-    print((window.winfo_screenwidth(), window.winfo_screenheight()))
     # Only start mainloop if we're running this module directly
     if not parent_window:
         window.mainloop()
@@ -451,5 +441,4 @@ if __name__ == "__main__":
     tb.Style().configure("TButton", font=("Microsoft Yahei UI", 14))
     # Window is already created at the top of the file
     create_home_screen()
-    print((window.winfo_screenwidth(), window.winfo_screenheight()))
     window.mainloop()

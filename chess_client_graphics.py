@@ -45,7 +45,7 @@ clock_labels = {"white": None, "black": None}
 clock_frame = None
 
 # Clock variables
-white_time = 20  # 5 minutes in seconds
+white_time = 300  # 5 minutes in seconds
 black_time = 300  # 5 minutes in seconds
 clock_running = False
 clock_labels = {"white": None, "black": None}
@@ -125,7 +125,7 @@ def stop_clock():
 def reset_clock():
     """Reset both clocks to 5 minutes"""
     global white_time, black_time, clock_running
-    white_time = 20
+    white_time = 300
     black_time = 300
     clock_running = False
     update_clock_display()

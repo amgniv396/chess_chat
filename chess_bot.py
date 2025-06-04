@@ -366,10 +366,6 @@ class ChessBot:
                     best_move = move
                     best_eval = eval_score
 
-                elapsed_time = time.time() - self.start_time
-                print(f"Depth {depth}: {move} (eval: {eval_score:.2f}, "
-                      f"nodes: {self.nodes_searched}, time: {elapsed_time:.2f}s)")
-
             except KeyboardInterrupt:
                 break
 
@@ -382,7 +378,6 @@ class ChessBot:
 
         move, eval_score = self.iterative_deepening(board, max_depth)
 
-        print(f"Final choice: {move} (eval: {eval_score:.2f})")
         return move
 
 
@@ -393,4 +388,3 @@ if __name__ == "__main__":
 
     # Example: Get best move for starting position
     best_move = bot.get_best_move(board, max_depth=5)
-    print(f"Best move: {best_move}")

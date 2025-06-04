@@ -95,8 +95,6 @@ def unpair(client, notify_partner=True):
 
 def handle_client(client):
     name = client.recv(BUFSIZ).decode("utf8")
-    print(f"{name} has joined.")
-    client.send(bytes("{info}Welcome! Send {enter_game} to start pairing.", "utf8"))
 
     while True:
         try:
@@ -113,12 +111,10 @@ def handle_client(client):
             elif data == "{quit_game}":
                 if client in pairs:
                     unpair(client, notify_partner=True)
-                    client.send(bytes("{info}You have left the game. Send {enter_game} to find a new match.", "utf8"))
+                    client.send(bytes("{info}You have left the game.", "utf8"))
                 elif client in waiting_clients:
                     waiting_clients.remove(client)
-                    client.send(bytes("{info}You have left the queue. Send {enter_game} to rejoin.", "utf8"))
-                else:
-                    client.send(bytes("{info}You are not in a game or queue.", "utf8"))
+                    client.send(bytes("{info}You have left the queue.", "utf8"))
 
             elif data == "{quit}":
                 client.send(bytes("{quit}", "utf8"))

@@ -48,7 +48,7 @@ def load_piece_images():
 
     for key, name in piece_names.items():
         try:
-            img = Image.open(f"assets/pieces/{name}.png")
+            img = Image.open(f"assets\\pieces\\{name}.png")
             img = img.resize((SQUARE_SIZE - PIECE_SIZE_TO_SQUARE, SQUARE_SIZE - PIECE_SIZE_TO_SQUARE))
             piece_images[key] = ImageTk.PhotoImage(img)
         except Exception as e:
@@ -103,14 +103,10 @@ def on_square_click(event, engine_type):
     row = event.y // SQUARE_SIZE
     col = event.x // SQUARE_SIZE
 
-    print(row, col)
-
     # Use chess.square with correct rank calculation
     square = chess.square(col, 7 - row)
 
-    print(square)
     piece = game_board.piece_at(square)
-    print(piece)
 
     if game_state["selected"] is not None:
         move = chess.Move(game_state["selected"], square)
@@ -265,7 +261,7 @@ def create_game_interface(window, return_to_homescreen, engine_type):
     # Background
     try:
         bg_image = ImageTk.PhotoImage(
-            Image.open("assets/utils/chessBackground.jpg").resize(
+            Image.open("assets\\utils\\chessBackground.jpg").resize(
                 (window.winfo_screenwidth(), window.winfo_screenheight())))
         canvas.bg_image = bg_image
         canvas.create_image(0, 0, image=bg_image, anchor=tk.NW)
@@ -336,40 +332,13 @@ def initialize_stockfish_engine(difficulty_level=1):
 
         # Try to create Stockfish engine without specifying path first
         try:
-            stockfish_engine = Stockfish()
+            stockfish_engine = Stockfish("stockfish-windows-x86-64-avx2\\stockfish\\stockfish-windows-x86-64-avx2.exe")
             # Test if it works
             test_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
             if not stockfish_engine.is_fen_valid(test_fen):
                 raise Exception("Stockfish validation failed")
         except Exception as e:
             print(f"Default Stockfish failed: {e}, trying specific paths...")
-
-            # Try specific paths
-            stockfish_paths = [
-                "stockfish-windows-x86-64-avx2/stockfish/stockfish-windows-x86-64-avx2.exe"
-            ]
-
-            stockfish_engine = None
-            for path in stockfish_paths:
-                if os.path.exists(path):
-                    try:
-                        stockfish_engine = Stockfish(path=path)
-                        test_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-                        if stockfish_engine.is_fen_valid(test_fen):
-                            print(f"Stockfish initialized with path: {path}")
-                            break
-                        else:
-                            del stockfish_engine
-                            stockfish_engine = None
-                    except Exception as path_error:
-                        print(f"Failed with path {path}: {path_error}")
-                        if stockfish_engine:
-                            try:
-                                del stockfish_engine
-                            except:
-                                pass
-                            stockfish_engine = None
-                        continue
 
             if stockfish_engine is None:
                 raise FileNotFoundError("Could not initialize Stockfish with any available path")
