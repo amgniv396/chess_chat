@@ -157,9 +157,17 @@ def play_with_stockfish():
 
 
 def play_with_bot():
-    # Placeholder function for bot gameplay
-    print("Play with Bot clicked - functionality to be implemented")
-    pass
+    try:
+        import simple_chess_bot  # This will be your new module
+        simple_chess_bot.play_with_chess_bot(window, return_to_homescreen, player_name)
+    except ImportError as e:
+        print(f"Error importing simple_chess_bot: {e}")
+        import tkinter.messagebox as messagebox
+        messagebox.showerror("Error", "Chess bot module not found!")
+    except Exception as e:
+        print(f"Error starting chess bot game: {e}")
+        import tkinter.messagebox as messagebox
+        messagebox.showerror("Error", f"Failed to start chess bot game: {str(e)}")
 
 
 def exit_game():
