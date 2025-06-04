@@ -3,6 +3,7 @@ import ttkbootstrap as tb
 from PIL import Image, ImageTk
 import math
 import chess_client_graphics
+import chess_engine_bot
 from SQLL_database import UserDatabase
 
 player_name = "Player1"  # Default player name
@@ -144,12 +145,7 @@ def start_game():
 
 def play_with_stockfish():
     try:
-        import simple_stockfish
-        simple_stockfish.play_with_stockfish(window, return_to_homescreen, player_name)
-    except ImportError as e:
-        print(f"Error importing simple_stockfish: {e}")
-        import tkinter.messagebox as messagebox
-        messagebox.showerror("Error", "Please install required packages:\npip install stockfish")
+        chess_engine_bot.play_with_stockfish(window, return_to_homescreen, player_name)
     except Exception as e:
         print(f"Error starting Stockfish game: {e}")
         import tkinter.messagebox as messagebox
@@ -158,12 +154,7 @@ def play_with_stockfish():
 
 def play_with_bot():
     try:
-        import simple_chess_bot  # This will be your new module
-        simple_chess_bot.play_with_chess_bot(window, return_to_homescreen, player_name)
-    except ImportError as e:
-        print(f"Error importing simple_chess_bot: {e}")
-        import tkinter.messagebox as messagebox
-        messagebox.showerror("Error", "Chess bot module not found!")
+        chess_engine_bot.play_with_chess_bot(window, return_to_homescreen, player_name)
     except Exception as e:
         print(f"Error starting chess bot game: {e}")
         import tkinter.messagebox as messagebox
