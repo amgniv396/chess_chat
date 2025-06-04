@@ -4,12 +4,12 @@ import chess
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 
-# Constants
-BOARD_SIZE = 800
-SQUARE_SIZE = BOARD_SIZE // 8
-PIECE_SIZE_TO_SQUARE = 15
-COLORS = {'odd': '#83CB72', 'even': '#DCE2D6'}
-CIRCLE_CONST = 35
+# Import shared functions and constants from chess_engine_bot
+from chess_engine_bot import (
+    BOARD_SIZE, SQUARE_SIZE, PIECE_SIZE_TO_SQUARE, CIRCLE_CONST,
+    piece_images, load_piece_images as load_images, draw_board, draw_pieces,
+    create_rounded_rectangle
+)
 
 # Socket constants
 HOST = '127.0.0.1'
@@ -18,7 +18,6 @@ BUFSIZ = 1024
 ADDR = (HOST, PORT)
 
 # Global variables
-piece_images = {}
 board = chess.Board()
 game_state = {
     "selected": None,
@@ -37,12 +36,6 @@ chess_canvas = None  # Added global reference to the chess canvas
 draw_offer_popup = None
 draw_offered_by_me = False
 draw_offered_by_opponent = False
-
-white_time = 0  # 5 minutes in seconds
-black_time = 0  # 5 minutes in seconds
-clock_running = False
-clock_labels = {"white": None, "black": None}
-clock_frame = None
 
 # Clock variables
 white_time = 300  # 5 minutes in seconds
@@ -142,7 +135,8 @@ def end_game_by_timeout(result_text, win):
     return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
                                                                                "return_to_homescreen") else None
     if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
-        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, result_text,win ,return_to_homescreen))
+        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, result_text, win, return_to_homescreen))
+
 
 def offer_draw():
     """Send draw offer to opponent"""
@@ -297,7 +291,7 @@ def end_game_as_draw():
     return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
                                                                                "return_to_homescreen") else None
     if return_to_homescreen:
-        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, "Game drawn by agreement!",None,
+        chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, "Game drawn by agreement!", None,
                                                                return_to_homescreen))
 
 
@@ -322,7 +316,7 @@ def connect_to_server(username="Player1"):
 
 def receive_messages():
     """Continuously receive messages from the server"""
-    global chat_display, chess_canvas, game_state, status_label,draw_offered_by_me
+    global chat_display, chess_canvas, game_state, status_label, draw_offered_by_me
 
     while True:
         try:
@@ -426,7 +420,7 @@ def receive_messages():
                                                                                            "return_to_homescreen") else None
                 if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
                     chess_canvas.after(1000,
-                                       lambda: show_game_over_screen(chess_canvas, result_text,True ,return_to_homescreen))
+                                       lambda: show_game_over_screen(chess_canvas, result_text, True, return_to_homescreen))
             elif msg.startswith("{illegal_move}"):
                 stop_clock()
 
@@ -514,53 +508,6 @@ def stop_client():
     if client_socket:
         send_message("{quit}")
         client_socket.close()
-
-
-# Chess graphics functions
-def load_images():
-    """Load chess piece images"""
-    piece_names = {
-        'R': "white rook",
-        'N': "white knight",
-        'B': "white bishop",
-        'Q': "white queen",
-        'K': "white king",
-        'P': "white pawn",
-        'r': "black rook",
-        'n': "black knight",
-        'b': "black bishop",
-        'q': "black queen",
-        'k': "black king",
-        'p': "black pawn",
-    }
-
-    for key, name in piece_names.items():
-        img = Image.open(f"assets/pieces/{name}.png")
-        img = img.resize((SQUARE_SIZE - PIECE_SIZE_TO_SQUARE, SQUARE_SIZE - PIECE_SIZE_TO_SQUARE))
-        piece_images[key] = ImageTk.PhotoImage(img)
-
-
-def draw_board(canvas):
-    """Draw the chess board squares"""
-    for row in range(8):
-        for col in range(8):
-            color = COLORS['odd'] if (row + col) % 2 == 0 else COLORS['even']
-            canvas.create_rectangle(col * SQUARE_SIZE, row * SQUARE_SIZE, (col + 1) * SQUARE_SIZE,
-                                    (row + 1) * SQUARE_SIZE, fill=color, outline="")
-
-
-def draw_pieces(canvas, fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"):
-    """Draw chess pieces on the board based on FEN notation"""
-    board_fen = fen.split()[0].replace('/', '')
-    i = 0
-    for piece_fen_representation in board_fen:
-        if piece_fen_representation.isdigit():
-            i += int(piece_fen_representation)
-        else:
-            canvas.create_image((i % 8) * SQUARE_SIZE + PIECE_SIZE_TO_SQUARE / 2,
-                                (i // 8) * SQUARE_SIZE + PIECE_SIZE_TO_SQUARE / 2, anchor="nw",
-                                image=piece_images[piece_fen_representation])
-            i += 1
 
 
 def is_promotion_move(from_square, to_square, board_obj):
@@ -822,7 +769,7 @@ def update_board(canvas, chess_board, game_state):
         return
 
     # Highlight selected square
-    if game_state["selected"]  is not None:
+    if game_state["selected"] is not None:
         row = 7 - chess.square_rank(game_state["selected"])
         col = chess.square_file(game_state["selected"])
         x1 = col * SQUARE_SIZE
@@ -845,6 +792,51 @@ def update_board(canvas, chess_board, game_state):
     # Add visual indicator for whose turn it is
     x_center = BOARD_SIZE / 2
     y_position = BOARD_SIZE - 15
+
+
+def show_game_over_screen(canvas, result_text, win, return_to_homescreen):
+    """Display game over screen with result and update database"""
+    from SQLL_database import UserDatabase
+    db = UserDatabase()
+    print("win", win)
+    print("name", user_name)
+    if win is not None:
+        db.add_rating(user_name, 10 if win else -10)
+
+    print(db.get_rating(user_name))
+
+    # Center of the canvas
+    center_x = canvas.winfo_width() / 2
+    center_y = canvas.winfo_height() / 2
+
+    rect_width = 300
+    rect_height = 400
+
+    # Draw a semi-transparent dark rectangle behind everything (optional)
+    canvas.create_rectangle(0, 0, canvas.winfo_width(), canvas.winfo_height(),
+                            fill="#000000", stipple="gray50", outline="")
+
+    # Draw rounded rectangle
+    create_rounded_rectangle(
+        canvas,
+        center_x - rect_width / 2,
+        center_y - rect_height / 2,
+        center_x + rect_width / 2,
+        center_y + rect_height / 2,
+        radius=40,
+        fill="#111111",
+        outline="#333333",
+        width=2
+    )
+
+    # Draw game result text
+    canvas.create_text(center_x, center_y - rect_height / 4,
+                       text=result_text, font=("Arial", 24, "bold"), fill="white")
+
+    # Create "Return Home" button directly on the canvas
+    return_button = tk.Button(canvas, text="Return Home", font=("Arial", 14),
+                              command=return_to_homescreen)
+    canvas.create_window(center_x, center_y + rect_height / 4, window=return_button)
 
 
 def start_game(window, userName, return_to_homescreen):
@@ -958,7 +950,6 @@ def start_game(window, userName, return_to_homescreen):
     # Reset clocks when starting a new game
     reset_clock()
 
-
     def send_chat_message(event=None):
         message = chat_entry.get()
         if message.strip() != "":
@@ -979,69 +970,7 @@ def resign_game(canvas, return_to_homescreen):
     """Resign the current game"""
     stop_clock()
     send_message("{opponent_resigned}")
-    show_game_over_screen(canvas, "you win, opponent resign",False, return_to_homescreen)
-
-def show_game_over_screen(canvas, result_text, win, return_to_homescreen):
-    from SQLL_database import UserDatabase
-    db = UserDatabase()
-    print("win", win)
-    print("name", user_name)
-    if win is not None:
-        db.add_rating(user_name, 10 if win else -10)
-
-    print(db.get_rating(user_name))
-    """Display game over screen with result"""
-    # Center of the canvas
-    center_x = canvas.winfo_width() / 2
-    center_y = canvas.winfo_height() / 2
-
-    rect_width = 300
-    rect_height = 400
-
-    # Draw a semi-transparent dark rectangle behind everything (optional)
-    canvas.create_rectangle(0, 0, canvas.winfo_width(), canvas.winfo_height(),
-                            fill="#000000", stipple="gray50", outline="")
-
-    # Draw rounded rectangle
-    create_rounded_rectangle(
-        canvas,
-        center_x - rect_width / 2,
-        center_y - rect_height / 2,
-        center_x + rect_width / 2,
-        center_y + rect_height / 2,
-        radius=40,
-        fill="#111111",
-        outline="#333333",
-        width=2
-    )
-
-    # Draw game result text
-    canvas.create_text(center_x, center_y - rect_height / 4,
-                       text=result_text, font=("Arial", 24, "bold"), fill="white")
-
-    # Create "Return Home" button directly on the canvas
-    return_button = tk.Button(canvas, text="Return Home", font=("Arial", 14),
-                              command=return_to_homescreen)
-    canvas.create_window(center_x, center_y + rect_height / 4, window=return_button)
-
-
-def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
-    """Draw a rounded rectangle on the canvas"""
-    points = [
-        x1 + radius, y1,
-        x2 - radius, y1,
-        x2, y1,
-        x2, y1 + radius,
-        x2, y2 - radius,
-        x2, y2,
-        x2 - radius, y2,
-        x1 + radius, y2,
-        x1, y2,
-        x1, y2 - radius,
-        x1, y1 + radius,
-        x1, y1
-    ]
-    return canvas.create_polygon(points, **kwargs, smooth=True)
+    show_game_over_screen(canvas, "You resigned!\nYou lost!", False, return_to_homescreen)
 
 
 # Initialize the client connection when this module is imported

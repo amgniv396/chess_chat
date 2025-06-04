@@ -433,6 +433,10 @@ def run_home_screen(parent_window=None, username="Player1"):
         window.mainloop()
 
 
+
+
+#TODO:comment this!!!!!!!!!!!!!!!!!!!!!!!
+
 # Only run the app directly if this script is executed directly
 if __name__ == "__main__":
     window = tk.Tk()
