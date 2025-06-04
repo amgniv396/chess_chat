@@ -245,7 +245,8 @@ def create_hexagon_grid(canvas, center_x, center_y, hex_size):
     ]
 
     def handle_piece_click(piece_name):
-        print(f"{piece_name} was clicked!")
+        #print(f"{piece_name} was clicked!")
+        pass
 
     hexagons = {}
 

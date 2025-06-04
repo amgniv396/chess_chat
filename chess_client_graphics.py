@@ -798,12 +798,8 @@ def show_game_over_screen(canvas, result_text, win, return_to_homescreen):
     """Display game over screen with result and update database"""
     from SQLL_database import UserDatabase
     db = UserDatabase()
-    print("win", win)
-    print("name", user_name)
     if win is not None:
         db.add_rating(user_name, 10 if win else -10)
-
-    print(db.get_rating(user_name))
 
     # Center of the canvas
     center_x = canvas.winfo_width() / 2
