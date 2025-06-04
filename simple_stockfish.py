@@ -206,7 +206,7 @@ def stockfish_make_move():
 
                     return_to_homescreen = getattr(stockfish_canvas.master, 'return_to_homescreen', None)
                     if return_to_homescreen:
-                        stockfish_canvas.after(1000, lambda: show_game_over(result_text, win, return_to_homescreen))
+                        stockfish_canvas.after(1000, lambda: show_game_over(result_text, return_to_homescreen))
             else:
                 print(f"Stockfish suggested illegal move: {best_move}")
         else:
@@ -265,7 +265,7 @@ def on_square_click(event):
 
                 return_to_homescreen = getattr(stockfish_canvas.master, 'return_to_homescreen', None)
                 if return_to_homescreen:
-                    stockfish_canvas.after(1000, lambda: show_game_over(result_text, win, return_to_homescreen))
+                    stockfish_canvas.after(1000, lambda: show_game_over(result_text, return_to_homescreen))
                 return
 
             Thread(target=stockfish_make_move, daemon=True).start()
@@ -431,7 +431,7 @@ def resign_game(return_to_homescreen):
     global stockfish_game_state
     stockfish_game_state["game_active"] = False
     cleanup_stockfish()
-    show_game_over("You resigned! Stockfish wins.", False, return_to_homescreen)
+    show_game_over("You resigned! Stockfish wins.", return_to_homescreen)
 
 
 def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
@@ -453,22 +453,12 @@ def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
     return canvas.create_polygon(points, **kwargs, smooth=True)
 
 
-def show_game_over(result_text, win, return_to_homescreen):
+def show_game_over(result_text, return_to_homescreen):
     """Show game over screen with modern design like chess_client_graphics"""
     global stockfish_player_name
 
     # Clean up Stockfish engine
     cleanup_stockfish()
-
-    # Update rating
-    if win is not None:
-        try:
-            db = UserDatabase()
-            rating_change = 10 if win else -10
-            db.add_rating(stockfish_player_name, rating_change)
-            print(f"Rating updated: {'+' if win else ''}{rating_change}")
-        except Exception as e:
-            print(f"Rating update error: {e}")
 
     # Show result with modern design
     if stockfish_canvas and stockfish_canvas.winfo_exists():

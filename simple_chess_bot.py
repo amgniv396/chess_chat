@@ -102,12 +102,11 @@ def chess_bot_make_move():
 
             if chess_bot_board.is_game_over():
                 result_text = get_game_result()
-                win = "White" in result_text
                 chess_bot_game_state["game_active"] = False
 
                 return_to_homescreen = getattr(chess_bot_canvas.master, 'return_to_homescreen', None)
                 if return_to_homescreen:
-                    chess_bot_canvas.after(1000, lambda: show_game_over(result_text, win, return_to_homescreen))
+                    chess_bot_canvas.after(1000, lambda: show_game_over(result_text, return_to_homescreen))
         else:
             print("Chess bot returned no valid move")
 
@@ -160,12 +159,11 @@ def on_square_click(event):
 
             if chess_bot_board.is_game_over():
                 result_text = get_game_result()
-                win = "White" in result_text
                 chess_bot_game_state["game_active"] = False
 
                 return_to_homescreen = getattr(chess_bot_canvas.master, 'return_to_homescreen', None)
                 if return_to_homescreen:
-                    chess_bot_canvas.after(1000, lambda: show_game_over(result_text, win, return_to_homescreen))
+                    chess_bot_canvas.after(1000, lambda: show_game_over(result_text, return_to_homescreen))
                 return
 
             Thread(target=chess_bot_make_move, daemon=True).start()
@@ -312,7 +310,7 @@ def resign_game(return_to_homescreen):
     """Resign the game"""
     global chess_bot_game_state
     chess_bot_game_state["game_active"] = False
-    show_game_over("You resigned! Bot wins.", False, return_to_homescreen)
+    show_game_over("You resigned! Bot wins.", return_to_homescreen)
 
 
 def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
@@ -334,19 +332,9 @@ def create_rounded_rectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
     return canvas.create_polygon(points, **kwargs, smooth=True)
 
 
-def show_game_over(result_text, win, return_to_homescreen):
+def show_game_over(result_text, return_to_homescreen):
     """Show game over screen with modern design"""
     global chess_bot_player_name
-
-    # Update rating
-    if win is not None:
-        try:
-            db = UserDatabase()
-            rating_change = 10 if win else -10
-            db.add_rating(chess_bot_player_name, rating_change)
-            print(f"Rating updated: {'+' if win else ''}{rating_change}")
-        except Exception as e:
-            print(f"Rating update error: {e}")
 
     # Show result with modern design
     if chess_bot_canvas and chess_bot_canvas.winfo_exists():
