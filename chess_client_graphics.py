@@ -329,7 +329,7 @@ def end_game_as_draw():
     return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
                                                                                "return_to_homescreen") else None
     if return_to_homescreen:
-        formatted_text = format_message_with_line_breaks("Game drawn by agreement!")
+        formatted_text = format_message_with_line_breaks("Game drawn by\nagreement!")
         chess_canvas.after(1000, lambda: show_game_over_screen(chess_canvas, formatted_text, None,
                                                                return_to_homescreen))
 
@@ -443,7 +443,7 @@ def receive_messages():
             elif msg.startswith("{opponent_resigned}"):
                 stop_clock()
                 # Opponent resigned, so we win
-                result_text = format_message_with_line_breaks("You won! Opponent resigned.")
+                result_text = format_message_with_line_breaks("You won!\nOpponent resigned.")
 
                 # Show message in chat
                 if chat_display and chat_display.winfo_exists():
@@ -466,7 +466,7 @@ def receive_messages():
                                                                                            "return_to_homescreen") else None
                 if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
                     formatted_text = format_message_with_line_breaks(
-                        "You lost! You were disconnected for making an illegal move.")
+                        "You lost!\nYou were disconnected\nfor making an\nillegal move.")
                     chess_canvas.after(1000,
                                        lambda: show_game_over_screen(chess_canvas, formatted_text, False,
                                                                      return_to_homescreen))
@@ -509,6 +509,23 @@ def process_opponent_move(move_text):
             # Update status label if it exists
             if status_label and status_label.winfo_exists():
                 status_label.config(text="Your turn")
+
+            # *** ADD THIS: Check for game over after opponent's move ***
+            if board.is_game_over():
+                stop_clock()
+
+                return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
+                                                                                           "return_to_homescreen") else None
+                result_text = game_result(board)
+                win = determine_win_status(board, game_state)
+                formatted_result = format_message_with_line_breaks(result_text)
+
+                if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
+                    chess_canvas.after(2000,
+                                       lambda: show_game_over_screen(chess_canvas, formatted_result, win,
+                                                                     return_to_homescreen))
+                return
+
         else:
             # Send illegal move notification to server
             send_message("{illegal_move}")
@@ -520,7 +537,7 @@ def process_opponent_move(move_text):
             return_to_homescreen = chess_canvas.master.return_to_homescreen if hasattr(chess_canvas.master,
                                                                                        "return_to_homescreen") else None
             if return_to_homescreen and chess_canvas and chess_canvas.winfo_exists():
-                formatted_text = format_message_with_line_breaks("You won! Opponent disconnected for cheating.")
+                formatted_text = format_message_with_line_breaks("You won!\nOpponent disconnected\nfor cheating.")
                 chess_canvas.after(1000,
                                    lambda: show_game_over_screen(chess_canvas, formatted_text, True,
                                                                  return_to_homescreen))
