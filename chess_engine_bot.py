@@ -81,12 +81,15 @@ def draw_pieces(canvas, fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq 
 
 
 def get_game_result():
-    """Get game result text"""
+    """Get game result text from player's perspective"""
     if game_board.result() == "1-0":
-        return "White wins!"
+        # White wins - since player is always white, player wins
+        return "You won!"
     elif game_board.result() == "0-1":
-        return "Black wins!"
+        # Black wins - since player is always white, player loses
+        return "You lost!"
     else:
+        # Draw
         return "Draw!"
 
 
@@ -311,9 +314,9 @@ def resign_game(return_to_homescreen, engine_type):
 
     if engine_type == "stockfish":
         cleanup_stockfish()
-        show_game_over("You resigned! Stockfish wins.", return_to_homescreen)
+        show_game_over("You resigned!\nYou lost!", return_to_homescreen)
     else:
-        show_game_over("You resigned! Bot wins.", return_to_homescreen)
+        show_game_over("You resigned!\nYou lost!", return_to_homescreen)
 
 
 # ============= STOCKFISH-SPECIFIC FUNCTIONS =============
