@@ -6,10 +6,11 @@ from threading import Thread
 import time
 import os
 from SQLL_database import UserDatabase
-from chess_bot import minimax  # Import the minimax function from your chess bot
+# UPDATED IMPORT - Change this line to import the new ChessBot class
+from chess_bot import ChessBot  # Import the new ChessBot class instead of minimax function
 
 # Constants
-BOARD_SIZE = 800
+BOARD_SIZE = 760
 SQUARE_SIZE = BOARD_SIZE // 8
 PIECE_SIZE_TO_SQUARE = 15
 COLORS = {'odd': '#83CB72', 'even': '#DCE2D6'}
@@ -30,6 +31,9 @@ chess_bot_canvas = None
 chess_bot_status_label = None
 chess_bot_difficulty = 3  # Default depth for minimax
 chess_bot_player_name = "Player1"
+
+# NEW: Create a global instance of the chess bot
+chess_bot_instance = ChessBot()
 
 
 def load_piece_images():
@@ -77,16 +81,19 @@ def draw_pieces(canvas, fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq 
 
 
 def chess_bot_make_move():
-    """Make chess bot move using the minimax algorithm"""
-    global chess_bot_board, chess_bot_game_state
+    """UPDATED: Make chess bot move using the new ChessBot class"""
+    global chess_bot_board, chess_bot_game_state, chess_bot_instance
 
     if not chess_bot_game_state["game_active"] or chess_bot_game_state["my_turn"]:
         return
 
     try:
-        # Use minimax to get the best move
-        # The bot plays as black (maximizing_color = chess.BLACK)
-        best_move, _ = minimax(chess_bot_board, chess_bot_difficulty, True, chess.BLACK)
+        # Update the status to show the bot is thinking
+        if chess_bot_status_label and chess_bot_status_label.winfo_exists():
+            chess_bot_canvas.after(0, lambda: chess_bot_status_label.config(text="Bot thinking..."))
+
+        # UPDATED: Use the new ChessBot class instead of minimax function
+        best_move = chess_bot_instance.get_best_move(chess_bot_board, max_depth=chess_bot_difficulty)
 
         if best_move and best_move in chess_bot_board.legal_moves:
             chess_bot_board.push(best_move)
@@ -109,6 +116,18 @@ def chess_bot_make_move():
                     chess_bot_canvas.after(1000, lambda: show_game_over(result_text, return_to_homescreen))
         else:
             print("Chess bot returned no valid move")
+            # Fallback to a random move if the bot fails
+            legal_moves = list(chess_bot_board.legal_moves)
+            if legal_moves:
+                import random
+                fallback_move = random.choice(legal_moves)
+                chess_bot_board.push(fallback_move)
+                chess_bot_game_state["selected"] = None
+                chess_bot_game_state["current_player"] = chess.WHITE
+                chess_bot_game_state["my_turn"] = True
+
+                if chess_bot_canvas and chess_bot_canvas.winfo_exists():
+                    chess_bot_canvas.after(0, update_board)
 
     except Exception as e:
         print(f"Chess bot move error: {e}")
@@ -208,39 +227,53 @@ def update_board():
 
 
 def show_difficulty_selection(window, return_to_homescreen):
-    """Show difficulty selection dialog"""
-    global chess_bot_difficulty
+    """UPDATED: Show difficulty selection dialog with better descriptions"""
+    global chess_bot_difficulty, chess_bot_instance
 
     overlay = tk.Frame(window, bg="black")
     overlay.place(x=0, y=0, relwidth=1, relheight=1)
 
     # Main frame
     main_frame = tk.Frame(overlay, bg="#222222", relief="ridge", bd=3)
-    main_frame.place(relx=0.5, rely=0.5, anchor="center", width=400, height=500)
+    main_frame.place(relx=0.5, rely=0.5, anchor="center", width=450, height=500)
 
     tk.Label(main_frame, text="Select Bot Difficulty", font=("Arial", 20, "bold"),
              bg="#222222", fg="white").pack(pady=20)
 
+    # UPDATED: Removed Expert and Master difficulty levels
     difficulties = [
-        ("Very Easy", 1), ("Easy", 2), ("Medium", 3),
-        ("Hard", 4), ("Very Hard", 5), ("Expert", 6)
+        ("Beginner", 2, "Very easy - Good for learning"),
+        ("Easy", 3, "Easy - Makes some mistakes"),
+        ("Medium", 4, "Medium - Decent opponent"),
+        ("Hard", 5, "Hard - Strong tactical play")
     ]
 
     selected = tk.IntVar(value=chess_bot_difficulty)
 
-    for name, level in difficulties:
-        tk.Radiobutton(main_frame, text=f"{name} (Depth {level})",
-                       variable=selected, value=level, font=("Arial", 12),
-                       bg="#222222", fg="white", selectcolor="#444444").pack(pady=5)
+    for name, level, description in difficulties:
+        frame = tk.Frame(main_frame, bg="#222222")
+        frame.pack(pady=5, padx=20, fill="x")
+
+        tk.Radiobutton(frame, text=f"{name} (Depth {level})",
+                       variable=selected, value=level, font=("Arial", 12, "bold"),
+                       bg="#222222", fg="white", selectcolor="#444444").pack(anchor="w")
+
+        tk.Label(frame, text=description, font=("Arial", 10),
+                 bg="#222222", fg="#CCCCCC").pack(anchor="w", padx=20)
 
     def start_game():
-        global chess_bot_difficulty
+        global chess_bot_difficulty, chess_bot_instance
         chess_bot_difficulty = selected.get()
+
+        # UPDATED: Configure the bot's time limit based on difficulty
+        time_limits = {2: 1.0, 3: 2.0, 4: 3.0, 5: 5.0}
+        chess_bot_instance.time_limit = time_limits.get(chess_bot_difficulty, 5.0)
+
         overlay.destroy()
         start_chess_bot_game(window, return_to_homescreen)
 
     tk.Button(main_frame, text="Start Game", command=start_game,
-              font=("Arial", 12), bg="green", fg="white", width=15).pack(pady=10)
+              font=("Arial", 12), bg="green", fg="white", width=15).pack(pady=15)
     tk.Button(main_frame, text="Cancel", command=overlay.destroy,
               font=("Arial", 12), bg="red", fg="white", width=15).pack(pady=5)
 
@@ -249,12 +282,15 @@ def start_chess_bot_game(window, return_to_homescreen):
     """Start the chess bot game"""
     global chess_bot_board, chess_bot_game_state, chess_bot_canvas, chess_bot_status_label
 
-    # Reset game
+    # UPDATED: Reset game and clear transposition table
     chess_bot_board = chess.Board()
     chess_bot_game_state = {
         "selected": None, "current_player": chess.WHITE,
         "my_color": chess.WHITE, "my_turn": True, "game_active": True
     }
+
+    # Clear the bot's transposition table for a fresh start
+    chess_bot_instance.tt = chess_bot_instance.tt.__class__()
 
     # Clear window
     for widget in window.winfo_children():
@@ -284,8 +320,12 @@ def start_chess_bot_game(window, return_to_homescreen):
     chess_bot_canvas.place(relx=0.5, rely=0.5, anchor="center")
     chess_bot_canvas.master.return_to_homescreen = return_to_homescreen
 
-    # Status
-    chess_bot_status_label = tk.Label(canvas, text="Your turn - You are White",
+    # UPDATED: Status with difficulty info (removed Expert and Master)
+    difficulty_names = {2: "Beginner", 3: "Easy", 4: "Medium", 5: "Hard"}
+    difficulty_name = difficulty_names.get(chess_bot_difficulty, "Unknown")
+
+    chess_bot_status_label = tk.Label(canvas,
+                                      text=f"Your turn - You are White (vs {difficulty_name} Bot)",
                                       font=("Arial", 14), bg="white", relief="ridge")
     canvas.create_window(window.winfo_screenwidth() / 2,
                          window.winfo_screenheight() / 2 - BOARD_SIZE / 2 - 40,
