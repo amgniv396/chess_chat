@@ -103,9 +103,6 @@ def show_profile_overlay():
 
     # === Save Button ===
     def save_profile():
-
-        chess_engine_bot.COLORS = textures[selected_texture.get()]
-
         global player_name, player_rating
         new_name = name_entry.get()
         # Import the database class
@@ -128,10 +125,14 @@ def show_profile_overlay():
             import tkinter.messagebox as messagebox
             messagebox.showinfo("Success", "Profile updated successfully!")
             overlay.destroy()
-        else:
+        elif not player_name == new_name:
             # Show error message
             import tkinter.messagebox as messagebox
             messagebox.showerror("Error", message)
+
+        if not chess_engine_bot.COLORS == textures[selected_texture.get()]:
+            chess_engine_bot.COLORS = textures[selected_texture.get()]
+            overlay.destroy()
 
     save_btn = tk.Button(overlay, text="Save", command=save_profile, font=("Arial", 12, "bold"),
                          bg="#00aa44", fg="white", width=8, height=1)
