@@ -75,11 +75,14 @@ def show_profile_overlay():
     dark_bg.create_text(center_x - 141, center_y + 8, text="Themes:", font=("Arial", 14), fill="white")
 
     # === Texture Options ===
-    textures = ["black bishop", "black king", "black knight"]
-    selected_texture = tk.StringVar(value="black king")
+    textures = {"Green&White": {'odd': '#83CB72', 'even': '#DCE2D6'},
+                "Blue&White": {'odd': '#5384ac', 'even': '#f3f3f1'},
+                "Red&White": {'odd': '#a3524e', 'even': '#f2e8e7'}}
+    selected_texture = tk.StringVar(value="Green&White")
 
     for i, tex in enumerate(textures):
-        img = ImageTk.PhotoImage(Image.open(f"assets/pieces/{tex}.png").resize((80, 80)))
+        print(tex)
+        img = ImageTk.PhotoImage(Image.open(f"assets/boardColors/{tex}.png").resize((80, 80)))
 
         texture_frame = tk.Frame(overlay, bg="#333333", relief="raised", bd=2)
         texture_frame.place(x=center_x - 151 + i * 110, y=center_y + 35, width=90, height=90)
@@ -100,9 +103,11 @@ def show_profile_overlay():
 
     # === Save Button ===
     def save_profile():
+
+        chess_engine_bot.COLORS = textures[selected_texture.get()]
+
         global player_name, player_rating
         new_name = name_entry.get()
-
         # Import the database class
         from SQLL_database import UserDatabase
         db = UserDatabase()
@@ -118,10 +123,6 @@ def show_profile_overlay():
             _, updated_rating = db.get_rating(player_name)
             if updated_rating and str(updated_rating).isdigit():
                 player_rating = updated_rating
-
-            print(f"Name updated to: {new_name}")
-            print(f"Rating: {player_rating}")
-            print(f"Selected texture: {selected_texture.get()}")
 
             # Show success message
             import tkinter.messagebox as messagebox
