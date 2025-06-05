@@ -435,11 +435,6 @@ def receive_messages():
             elif msg.startswith("{start_clock}"):
                 # Server signals both players to start their clocks simultaneously
                 start_clock()
-                if chat_display and chat_display.winfo_exists():
-                    chat_display.configure(state="normal")
-                    chat_display.insert(tk.END, "System: Game clock started!\n")
-                    chat_display.configure(state="disabled")
-                    chat_display.see(tk.END)
             elif msg.startswith("{opponent_resigned}"):
                 stop_clock()
                 # Opponent resigned, so we win
@@ -709,15 +704,6 @@ def on_square_click(event, canvas, chess_board, game_state, return_to_homescreen
         if chat_display and chat_display.winfo_exists():
             chat_display.configure(state="normal")
             chat_display.insert(tk.END, "System: Waiting to be paired with an opponent.\n")
-            chat_display.configure(state="disabled")
-            chat_display.see(tk.END)
-        return
-
-    # Check if it's my turn
-    if not game_state["my_turn"]:
-        if chat_display and chat_display.winfo_exists():
-            chat_display.configure(state="normal")
-            chat_display.insert(tk.END, "System: It's not your turn yet.\n")
             chat_display.configure(state="disabled")
             chat_display.see(tk.END)
         return
@@ -1005,7 +991,7 @@ def start_game(window, userName, return_to_homescreen):
     global clock_frame, clock_labels
     clock_frame = tk.Frame(canvas, bg="white", bd=3, relief="ridge")
     canvas.create_window(window.winfo_screenwidth() / 2 - BOARD_SIZE / 2 - 150,
-                         window.winfo_screenheight() / 2 - 200, window=clock_frame)
+                         50, window=clock_frame)
 
     # Clock title
     clock_title = tk.Label(clock_frame, text="Game Clock", font=("Arial", 12, "bold"), bg="white")
