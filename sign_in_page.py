@@ -41,8 +41,8 @@ class SignInApp:
         self.main_container = ttk.Frame(self.root)
         self.main_container.pack(fill=BOTH, expand=True)
 
-        # Create content frame to center the sign-in forms
-        self.content_frame = ttk.Frame(self.main_container, width=400, height=500)
+        # Create content frame to center the sign-in forms (increased height for server fields)
+        self.content_frame = ttk.Frame(self.main_container, width=400, height=600)
         self.content_frame.place(relx=0.5, rely=0.5, anchor=CENTER)
 
         # Create frames for different pages
@@ -110,6 +110,20 @@ class SignInApp:
         self.password_entry = ttk.Entry(self.sign_in_frame, width=30, show="*")
         self.password_entry.pack(pady=10)
         self.set_placeholder(self.password_entry, "Password")
+
+        # Server Connection Section
+        server_frame = ttk.LabelFrame(self.sign_in_frame, text="Server Connection", padding=10)
+        server_frame.pack(pady=15, padx=20, fill="x")
+
+        # Server IP
+        self.server_ip_entry = ttk.Entry(server_frame, width=30)
+        self.server_ip_entry.pack(pady=5)
+        self.set_placeholder(self.server_ip_entry, "Server IP (default: 127.0.0.1)")
+
+        # Server Port
+        self.server_port_entry = ttk.Entry(server_frame, width=30)
+        self.server_port_entry.pack(pady=5)
+        self.set_placeholder(self.server_port_entry, "Server Port (default: 33000)")
 
         # Sign In Button
         ttk.Button(
@@ -365,6 +379,28 @@ class SignInApp:
         self.sign_up_frame.pack(fill=BOTH, expand=True)
         self.signup_verification_frame.pack_forget()
 
+    def get_server_connection_info(self):
+        """Get server IP and port from the input fields"""
+        server_ip = self.server_ip_entry.get()
+        server_port = self.server_port_entry.get()
+
+        # Use defaults if placeholders are still present or fields are empty
+        if server_ip == "Server IP (default: 127.0.0.1)" or not server_ip.strip():
+            server_ip = "127.0.0.1"
+
+        if server_port == "Server Port (default: 33000)" or not server_port.strip():
+            server_port = "33000"
+
+        try:
+            port = int(server_port)
+            if port < 1 or port > 65535:
+                raise ValueError("Port out of range")
+        except ValueError:
+            messagebox.showerror("Error", "Invalid port number. Using default port 33000.")
+            port = 33000
+
+        return server_ip.strip(), port
+
     def load_home_screen(self, username):
         """Load the home screen module and transition to it"""
         # Add the current directory to sys.path if it's not already there
@@ -375,6 +411,13 @@ class SignInApp:
         # Import homeScreen_graphics
         try:
             import homeScreen_graphics
+            # Get server connection info and pass it to the chess client
+            server_ip, server_port = self.get_server_connection_info()
+
+            # Set the server connection info in the chess client before loading home screen
+            import chess_client_graphics
+            chess_client_graphics.set_server_connection(server_ip, server_port)
+
             # Pass the current window and username to the home screen module
             homeScreen_graphics.run_home_screen(self.root, username)
 

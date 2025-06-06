@@ -46,6 +46,53 @@ clock_frame = None
 
 user_name = None
 
+# Add these lines to the top of chess_client_graphics.py after the existing imports
+# and socket constants section:
+
+# Socket constants - now configurable
+HOST = '127.0.0.1'  # Default host
+PORT = 33000        # Default port
+BUFSIZ = 1024
+ADDR = (HOST, PORT)  # This will be updated by set_server_connection()
+
+# Add this new function to chess_client_graphics.py:
+def set_server_connection(host, port):
+    """Set the server host and port for connection"""
+    global HOST, PORT, ADDR
+    HOST = host
+    PORT = port
+    ADDR = (HOST, PORT)
+    print(f"Server connection set to {HOST}:{PORT}")
+
+# Update the connect_to_server function in chess_client_graphics.py:
+def connect_to_server(username="Player1"):
+    """Connect to the chess server"""
+    global client_socket, receive_thread
+
+    client_socket = socket(AF_INET, SOCK_STREAM)
+    try:
+        print(f"Attempting to connect to {HOST}:{PORT}")
+        client_socket.connect(ADDR)
+        client_socket.send(bytes(username, "utf8"))
+
+        # Start receiving thread
+        receive_thread = Thread(target=receive_messages, daemon=True)
+        receive_thread.start()
+        print(f"Successfully connected to server at {HOST}:{PORT}")
+        return True
+    except Exception as e:
+        print(f"Connection error to {HOST}:{PORT}: {e}")
+        # Show a user-friendly error message
+        if chess_canvas and chess_canvas.winfo_exists():
+            import tkinter.messagebox as messagebox
+            messagebox.showerror("Connection Error",
+                               f"Failed to connect to server at {HOST}:{PORT}\n"
+                               f"Error: {str(e)}\n\n"
+                               f"Please check:\n"
+                               f"• Server IP and port are correct\n"
+                               f"• Server is running\n"
+                               f"• Network connection is available")
+        return False
 
 def format_time(seconds):
     """Format time in MM:SS format"""
@@ -1002,9 +1049,9 @@ def resign_game(return_to_homescreen):
     show_game_over_screen(chess_canvas, formatted_text, False, return_to_homescreen)
 
 
-# Initialize the client connection when this module is imported
+''''# Initialize the client connection when this module is imported
 def initialize():
-    connect_to_server()
+    connect_to_server()'''
 
 
 initialize()
