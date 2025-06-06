@@ -245,7 +245,6 @@ if __name__ == "__main__":
     try:
         SERVER.listen(5)
         print("Waiting for connections...")
-        print("Press Ctrl+C to stop the server gracefully")
 
         ACCEPT_THREAD = Thread(target=accept_incoming_connections)
         ACCEPT_THREAD.daemon = True  # Make thread daemon so it dies with main process
