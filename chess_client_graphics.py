@@ -1049,9 +1049,9 @@ def resign_game(return_to_homescreen):
     show_game_over_screen(chess_canvas, formatted_text, False, return_to_homescreen)
 
 
-''''# Initialize the client connection when this module is imported
+# Initialize the client connection when this module is imported
 def initialize():
-    connect_to_server()'''
+    connect_to_server()
 
 
 initialize()
