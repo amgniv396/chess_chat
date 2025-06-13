@@ -305,7 +305,7 @@ def create_home_screen():
     center_x = width / 2
     center_y = height * 0.5
     rect_width = 320
-    rect_height = 625  # Increased height to accommodate new buttons
+    rect_height = height/1.4  # Increased height to accommodate new buttons
 
     create_rounded_rectangle(
         canvas,
